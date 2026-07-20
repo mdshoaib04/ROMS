@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: InNews ROMS - Release Order Management System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: clients
+    description: Client records
+  - name: agencies
+    description: Agencies and freelancers
+  - name: releaseOrders
+    description: Release Order management
+  - name: playoutReports
+    description: Playout report management
+  - name: invoices
+    description: Invoice management
+  - name: payments
+    description: Payment tracking
+  - name: dashboard
+    description: Dashboard summaries
+  - name: notifications
+    description: Notifications and alerts
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +44,838 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current session
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  # USERS
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  # CLIENTS
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get client by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    patch:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Client updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  # AGENCIES
+  /agencies:
+    get:
+      operationId: listAgencies
+      tags: [agencies]
+      summary: List all agencies and freelancers
+      responses:
+        "200":
+          description: List of agencies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agency"
+    post:
+      operationId: createAgency
+      tags: [agencies]
+      summary: Create a new agency or freelancer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgencyInput"
+      responses:
+        "201":
+          description: Agency created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agency"
+
+  /agencies/{id}:
+    patch:
+      operationId: updateAgency
+      tags: [agencies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgencyUpdate"
+      responses:
+        "200":
+          description: Agency updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agency"
+    delete:
+      operationId: deleteAgency
+      tags: [agencies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  # RELEASE ORDERS
+  /release-orders:
+    get:
+      operationId: listReleaseOrders
+      tags: [releaseOrders]
+      summary: List release orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: string
+            description: "YYYY-MM format"
+      responses:
+        "200":
+          description: List of release orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReleaseOrder"
+    post:
+      operationId: createReleaseOrder
+      tags: [releaseOrders]
+      summary: Create a new release order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseOrderInput"
+      responses:
+        "201":
+          description: Release order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+
+  /release-orders/{id}:
+    get:
+      operationId: getReleaseOrder
+      tags: [releaseOrders]
+      summary: Get release order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Release order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+    patch:
+      operationId: updateReleaseOrder
+      tags: [releaseOrders]
+      summary: Update release order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReleaseOrderUpdate"
+      responses:
+        "200":
+          description: Release order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+    delete:
+      operationId: deleteReleaseOrder
+      tags: [releaseOrders]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  /release-orders/{id}/approve:
+    post:
+      operationId: approveReleaseOrder
+      tags: [releaseOrders]
+      summary: Approve a release order (management only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Release order approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+
+  /release-orders/{id}/reject:
+    post:
+      operationId: rejectReleaseOrder
+      tags: [releaseOrders]
+      summary: Reject a release order (management only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectionInput"
+      responses:
+        "200":
+          description: Release order rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+
+  /release-orders/{id}/stop:
+    post:
+      operationId: stopReleaseOrder
+      tags: [releaseOrders]
+      summary: Stop/terminate an active release order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StopOrderInput"
+      responses:
+        "200":
+          description: Release order stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+
+  /release-orders/{id}/revise:
+    post:
+      operationId: reviseReleaseOrder
+      tags: [releaseOrders]
+      summary: Submit a revision to an active release order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RevisionInput"
+      responses:
+        "200":
+          description: Revision submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseOrder"
+
+  # PLAYOUT REPORTS
+  /playout-reports:
+    get:
+      operationId: listPlayoutReports
+      tags: [playoutReports]
+      summary: List playout reports
+      parameters:
+        - name: releaseOrderId
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of playout reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayoutReport"
+    post:
+      operationId: createPlayoutReport
+      tags: [playoutReports]
+      summary: Generate a playout report for a release order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayoutReportInput"
+      responses:
+        "201":
+          description: Playout report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayoutReport"
+
+  /playout-reports/{id}:
+    get:
+      operationId: getPlayoutReport
+      tags: [playoutReports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Playout report details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayoutReport"
+    patch:
+      operationId: updatePlayoutReport
+      tags: [playoutReports]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayoutReportUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayoutReport"
+
+  # INVOICES
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List invoices
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create an invoice from a playout report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "201":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+    patch:
+      operationId: updateInvoice
+      tags: [invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceUpdate"
+      responses:
+        "200":
+          description: Invoice updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}/approve:
+    post:
+      operationId: approveInvoice
+      tags: [invoices]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}/send:
+    post:
+      operationId: sendInvoice
+      tags: [invoices]
+      summary: Mark invoice as sent to client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice marked as sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  # PAYMENTS
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List all payments
+      parameters:
+        - name: invoiceId
+          in: query
+          schema:
+            type: integer
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      operationId: recordPayment
+      tags: [payments]
+      summary: Record a payment against an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # DASHBOARD
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get role-based dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/active-media:
+    get:
+      operationId: getActiveMedia
+      tags: [dashboard]
+      summary: All currently active/running release orders
+      responses:
+        "200":
+          description: Active media list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReleaseOrder"
+
+  /dashboard/expiring-soon:
+    get:
+      operationId: getExpiringSoon
+      tags: [dashboard]
+      summary: Release orders expiring within 7 days
+      responses:
+        "200":
+          description: Expiring release orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReleaseOrder"
+
+  /dashboard/pending-invoices:
+    get:
+      operationId: getPendingInvoices
+      tags: [dashboard]
+      summary: Invoices pending payment (with aging info)
+      responses:
+        "200":
+          description: Pending invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+
+  # NOTIFICATIONS
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the current user
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked as read
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +886,735 @@ components:
       required:
         - status
 
+    # AUTH
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    # USER
+    User:
+      type: object
+      required: [id, username, name, role, email, isActive, createdAt]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [management, operations, coordinator, sales]
+        phone:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [username, name, email, role, password]
+      properties:
+        username:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [management, operations, coordinator, sales]
+        phone:
+          type: string
+        password:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [management, operations, coordinator, sales]
+        phone:
+          type: string
+        isActive:
+          type: boolean
+        password:
+          type: string
+
+    # CLIENT
+    Client:
+      type: object
+      required: [id, name, address, phone, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        gstNumber:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ClientInput:
+      type: object
+      required: [name, address, phone]
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        gstNumber:
+          type: string
+        notes:
+          type: string
+
+    ClientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        gstNumber:
+          type: string
+        notes:
+          type: string
+
+    # AGENCY
+    Agency:
+      type: object
+      required: [id, name, type, commissionPercent, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [agency, freelancer]
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        commissionPercent:
+          type: number
+        createdAt:
+          type: string
+
+    AgencyInput:
+      type: object
+      required: [name, type, commissionPercent]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [agency, freelancer]
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        commissionPercent:
+          type: number
+
+    AgencyUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [agency, freelancer]
+        contactPerson:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        commissionPercent:
+          type: number
+
+    # RELEASE ORDER
+    ReleaseOrder:
+      type: object
+      required: [id, roNumber, clientId, clientName, status, publishFrom, publishTo, createdAt, createdBy]
+      properties:
+        id:
+          type: integer
+        roNumber:
+          type: string
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        agencyId:
+          type: ["integer", "null"]
+        agencyName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, pending_approval, approved, rejected, active, completed, stopped]
+        roDate:
+          type: ["string", "null"]
+        clientRoReference:
+          type: ["string", "null"]
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        scrollKannada:
+          type: boolean
+        scrollMarathi:
+          type: boolean
+        audioVideoKannada:
+          type: boolean
+        audioVideoMarathi:
+          type: boolean
+        repeatTimes:
+          type: ["integer", "null"]
+        spotType:
+          type: ["string", "null"]
+          description: "prime, repeat, L-band, aston"
+        spotDuration:
+          type: ["string", "null"]
+          description: "15s, 30s, L-band, aston"
+        ratePerSpot:
+          type: ["number", "null"]
+        bonusSpots:
+          type: ["integer", "null"]
+        mediaDesignRequired:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        rejectionReason:
+          type: ["string", "null"]
+        stopReason:
+          type: ["string", "null"]
+        stoppedAt:
+          type: ["string", "null"]
+        mediaUrl:
+          type: ["string", "null"]
+        revisionNote:
+          type: ["string", "null"]
+        revisionAppliedAt:
+          type: ["string", "null"]
+        approvedAt:
+          type: ["string", "null"]
+        approvedBy:
+          type: ["integer", "null"]
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ReleaseOrderInput:
+      type: object
+      required: [clientId, publishFrom, publishTo]
+      properties:
+        clientId:
+          type: integer
+        agencyId:
+          type: integer
+        roDate:
+          type: string
+        clientRoReference:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        scrollKannada:
+          type: boolean
+        scrollMarathi:
+          type: boolean
+        audioVideoKannada:
+          type: boolean
+        audioVideoMarathi:
+          type: boolean
+        repeatTimes:
+          type: integer
+        spotType:
+          type: string
+        spotDuration:
+          type: string
+        ratePerSpot:
+          type: number
+        bonusSpots:
+          type: integer
+        mediaDesignRequired:
+          type: boolean
+        notes:
+          type: string
+        mediaUrl:
+          type: string
+
+    ReleaseOrderUpdate:
+      type: object
+      properties:
+        agencyId:
+          type: integer
+        roDate:
+          type: string
+        clientRoReference:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        scrollKannada:
+          type: boolean
+        scrollMarathi:
+          type: boolean
+        audioVideoKannada:
+          type: boolean
+        audioVideoMarathi:
+          type: boolean
+        repeatTimes:
+          type: integer
+        spotType:
+          type: string
+        spotDuration:
+          type: string
+        ratePerSpot:
+          type: number
+        bonusSpots:
+          type: integer
+        mediaDesignRequired:
+          type: boolean
+        notes:
+          type: string
+        mediaUrl:
+          type: string
+
+    RejectionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    StopOrderInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    RevisionInput:
+      type: object
+      required: [note]
+      properties:
+        note:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+
+    # PLAYOUT REPORT
+    PlayoutReport:
+      type: object
+      required: [id, releaseOrderId, roNumber, clientName, reportDate, totalSpotsScheduled, totalSpotsAired, status, createdBy, createdAt]
+      properties:
+        id:
+          type: integer
+        releaseOrderId:
+          type: integer
+        roNumber:
+          type: string
+        clientName:
+          type: string
+        reportDate:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        totalSpotsScheduled:
+          type: integer
+        totalSpotsAired:
+          type: integer
+        scrollKannadaDays:
+          type: ["integer", "null"]
+        scrollMarathiDays:
+          type: ["integer", "null"]
+        videoKannadaDays:
+          type: ["integer", "null"]
+        videoMarathiDays:
+          type: ["integer", "null"]
+        discrepancyNote:
+          type: ["string", "null"]
+        screenshotUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, submitted, invoiced]
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+
+    PlayoutReportInput:
+      type: object
+      required: [releaseOrderId, reportDate, totalSpotsScheduled, totalSpotsAired]
+      properties:
+        releaseOrderId:
+          type: integer
+        reportDate:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        totalSpotsScheduled:
+          type: integer
+        totalSpotsAired:
+          type: integer
+        scrollKannadaDays:
+          type: integer
+        scrollMarathiDays:
+          type: integer
+        videoKannadaDays:
+          type: integer
+        videoMarathiDays:
+          type: integer
+        discrepancyNote:
+          type: string
+        screenshotUrl:
+          type: string
+
+    PlayoutReportUpdate:
+      type: object
+      properties:
+        totalSpotsAired:
+          type: integer
+        scrollKannadaDays:
+          type: integer
+        scrollMarathiDays:
+          type: integer
+        videoKannadaDays:
+          type: integer
+        videoMarathiDays:
+          type: integer
+        discrepancyNote:
+          type: string
+        screenshotUrl:
+          type: string
+
+    # INVOICE
+    Invoice:
+      type: object
+      required: [id, invoiceNumber, clientId, clientName, status, totalAmount, createdAt]
+      properties:
+        id:
+          type: integer
+        invoiceNumber:
+          type: string
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        clientAddress:
+          type: string
+        clientGst:
+          type: ["string", "null"]
+        releaseOrderId:
+          type: integer
+        playoutReportId:
+          type: ["integer", "null"]
+        agencyId:
+          type: ["integer", "null"]
+        agencyName:
+          type: ["string", "null"]
+        roReference:
+          type: ["string", "null"]
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        scrollKannadaDays:
+          type: ["integer", "null"]
+        scrollKannadaRate:
+          type: ["number", "null"]
+        scrollMarathiDays:
+          type: ["integer", "null"]
+        scrollMarathiRate:
+          type: ["number", "null"]
+        videoKannadaDays:
+          type: ["integer", "null"]
+        videoKannadaRate:
+          type: ["number", "null"]
+        videoMarathiDays:
+          type: ["integer", "null"]
+        videoMarathiRate:
+          type: ["number", "null"]
+        videoCreativeCharges:
+          type: ["number", "null"]
+        includeGst:
+          type: boolean
+        cgstPercent:
+          type: number
+        sgstPercent:
+          type: number
+        subtotal:
+          type: number
+        cgstAmount:
+          type: ["number", "null"]
+        sgstAmount:
+          type: ["number", "null"]
+        totalAmount:
+          type: number
+        paidAmount:
+          type: number
+        dueAmount:
+          type: number
+        commissionAmount:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [draft, pending_approval, approved, sent, partially_paid, paid]
+        agingDays:
+          type: ["integer", "null"]
+        agingStatus:
+          type: ["string", "null"]
+          enum: ["normal", "warning", "overdue", null]
+        sentAt:
+          type: ["string", "null"]
+        approvedAt:
+          type: ["string", "null"]
+        paidAt:
+          type: ["string", "null"]
+        createdBy:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    InvoiceInput:
+      type: object
+      required: [clientId, releaseOrderId, publishFrom, publishTo]
+      properties:
+        clientId:
+          type: integer
+        releaseOrderId:
+          type: integer
+        playoutReportId:
+          type: integer
+        agencyId:
+          type: integer
+        roReference:
+          type: string
+        publishFrom:
+          type: string
+        publishTo:
+          type: string
+        scrollKannadaDays:
+          type: integer
+        scrollKannadaRate:
+          type: number
+        scrollMarathiDays:
+          type: integer
+        scrollMarathiRate:
+          type: number
+        videoKannadaDays:
+          type: integer
+        videoKannadaRate:
+          type: number
+        videoMarathiDays:
+          type: integer
+        videoMarathiRate:
+          type: number
+        videoCreativeCharges:
+          type: number
+        includeGst:
+          type: boolean
+        cgstPercent:
+          type: number
+        sgstPercent:
+          type: number
+
+    InvoiceUpdate:
+      type: object
+      properties:
+        scrollKannadaDays:
+          type: integer
+        scrollKannadaRate:
+          type: number
+        scrollMarathiDays:
+          type: integer
+        scrollMarathiRate:
+          type: number
+        videoKannadaDays:
+          type: integer
+        videoKannadaRate:
+          type: number
+        videoMarathiDays:
+          type: integer
+        videoMarathiRate:
+          type: number
+        videoCreativeCharges:
+          type: number
+        includeGst:
+          type: boolean
+        cgstPercent:
+          type: number
+        sgstPercent:
+          type: number
+
+    # PAYMENT
+    Payment:
+      type: object
+      required: [id, invoiceId, amount, paymentMode, createdAt]
+      properties:
+        id:
+          type: integer
+        invoiceId:
+          type: integer
+        invoiceNumber:
+          type: string
+        clientName:
+          type: string
+        amount:
+          type: number
+        paymentMode:
+          type: string
+          enum: [upi, cheque, bank_transfer, cash]
+        paymentReference:
+          type: ["string", "null"]
+        paymentDate:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    PaymentInput:
+      type: object
+      required: [invoiceId, amount, paymentMode, paymentDate]
+      properties:
+        invoiceId:
+          type: integer
+        amount:
+          type: number
+        paymentMode:
+          type: string
+          enum: [upi, cheque, bank_transfer, cash]
+        paymentReference:
+          type: string
+        paymentDate:
+          type: string
+        notes:
+          type: string
+
+    # DASHBOARD
+    DashboardSummary:
+      type: object
+      required: [totalActiveROs, totalPendingApproval, totalExpiringSoon, totalInvoicesPending, totalRevenue, totalOutstanding, recentActivity]
+      properties:
+        totalActiveROs:
+          type: integer
+        totalPendingApproval:
+          type: integer
+        totalExpiringSoon:
+          type: integer
+        totalInvoicesPending:
+          type: integer
+        invoicesPendingGeneration:
+          type: integer
+        totalRevenue:
+          type: number
+        totalOutstanding:
+          type: number
+        overdueInvoices:
+          type: integer
+        warningInvoices:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+
+    ActivityItem:
+      type: object
+      required: [id, description, timestamp, type]
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
+        timestamp:
+          type: string
+        type:
+          type: string
+
+    # NOTIFICATION
+    Notification:
+      type: object
+      required: [id, message, type, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+        type:
+          type: string
+          enum: [ro_approved, ro_rejected, ro_expiring, invoice_overdue, playout_report_ready, coordinator_absent, invoice_delay]
+        relatedId:
+          type: ["integer", "null"]
+        relatedType:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string

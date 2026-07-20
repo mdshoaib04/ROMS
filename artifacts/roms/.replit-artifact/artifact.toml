@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "InNews ROMS"
+version = "1.0.0"
+id = "artifacts/roms"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24603
+
+[services.development]
+run = "pnpm --filter @workspace/roms run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/roms", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/roms/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24603"
+BASE_PATH = "/"

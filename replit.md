@@ -1,45 +1,39 @@
-# [Project name]
+# InNews ROMS — Release Order Management System
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A full-stack Release Order Management System for **InNews 24x7**, a Kannada/Marathi cable news channel in Belagavi, KA.
 
-## Run & Operate
+## Architecture
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- **Frontend** (`artifacts/roms`): React + Vite + Tailwind + shadcn/ui, served at `/`
+- **API Server** (`artifacts/api-server`): Express + Drizzle ORM + PostgreSQL, served at `/api`
+- **DB** (`lib/db`): Drizzle schema + migrations
+- **API Client** (`lib/api-client-react`): Orval-generated React Query hooks
+- **API Zod** (`lib/api-zod`): Orval-generated Zod validation schemas
+- **API Spec** (`lib/api-spec/openapi.yaml`): Full OpenAPI 3.0 spec
 
-## Stack
+## Running the App
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+Both workflows auto-start:
+- `artifacts/api-server: API Server` — Express API on PORT env
+- `artifacts/roms: web` — Vite dev server on PORT env
 
-## Where things live
+## Seed Accounts
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+| Role        | Username | Password  |
+|-------------|----------|-----------|
+| Management  | admin    | admin123  |
+| Operations  | ops1     | ops123    |
+| Coordinator | coord1   | coord123  |
+| Sales       | sales1   | sales123  |
 
-## Architecture decisions
+## Key Design Decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Auth**: Session-based (Bearer token in Authorization header), SHA-256 password hashing with SESSION_SECRET salt, sessions in DB
+- **Invoice format**: Matches supplied PDF — "News 27 Media Networks / InNews 24x7", Union Bank, GSTIN 29AAPFN6292A1ZY, `IN/<FY>/<n>`, CGST+SGST @9% each
+- **RO numbering**: `RO/<year>/<seq>` auto-generated
+- **4 roles**: management, operations, coordinator, sales — enforced server-side
 
-## Product
+## User Preferences
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Kannada/Marathi channel — bilingual scroll tracking (scroll_kannada, scroll_marathi)
+- Invoice print view must match exact PDF format with print CSS
