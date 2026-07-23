@@ -6,7 +6,8 @@ import {
   useRejectReleaseOrder,
   useStopReleaseOrder,
   useReviseReleaseOrder,
-  getGetReleaseOrderQueryKey
+  getGetReleaseOrderQueryKey,
+  useListPlayoutReports
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { ChevronLeft, Check, X, Ban, Printer, FileText, Download } from "lucide-react";
@@ -30,6 +31,9 @@ export default function ReleaseOrderDetail({ id: propId }: { id?: string }) {
   const { data: ro, isLoading } = useGetReleaseOrder(roId, {
     query: { enabled: !!roId && !isNaN(roId), queryKey: getGetReleaseOrderQueryKey(roId) }
   });
+
+  const { data: allReports } = useListPlayoutReports();
+  const roReports = allReports?.filter((r: any) => r.releaseOrderId === roId) || [];
 
   const approveMut = useApproveReleaseOrder();
   const rejectMut = useRejectReleaseOrder();
@@ -254,6 +258,44 @@ export default function ReleaseOrderDetail({ id: propId }: { id?: string }) {
               )}
             </CardContent>
           </Card>
+
+          {roReports.length > 0 && (
+            <Card>
+              <CardHeader className="bg-muted/30 border-b pb-4">
+                <CardTitle className="text-lg">Playout Execution Reports</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                {roReports.map((report: any) => (
+                  <div key={report.id} className="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0">
+                    <div>
+                      <Link href={`/playout-reports/${report.id}`} className="font-medium hover:underline text-primary">
+                        Report PR-{report.id.toString().padStart(4, '0')}
+                      </Link>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Report Date: {format(new Date(report.reportDate), "dd MMM yyyy")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <span className="font-mono font-medium">{report.totalSpotsAired} / {report.totalSpotsScheduled}</span>
+                        <p className="text-xs text-muted-foreground">spots</p>
+                      </div>
+                      {report.varianceFlag === "under-aired" && (
+                        <Badge variant="destructive" className="h-5 text-[10px] px-1.5 py-0 whitespace-nowrap">
+                          Under-aired ({Math.abs(report.variancePercent).toFixed(1)}%)
+                        </Badge>
+                      )}
+                      {report.varianceFlag === "over-aired" && (
+                        <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white h-5 text-[10px] px-1.5 py-0 whitespace-nowrap">
+                          Over-aired (+{Math.abs(report.variancePercent).toFixed(1)}%)
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6">

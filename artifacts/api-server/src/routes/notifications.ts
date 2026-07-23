@@ -3,11 +3,15 @@ import { db } from "@workspace/db";
 import { notificationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { runManagementOnDemandChecks } from "../lib/onDemandChecks";
 
 const router = Router();
 
 router.get("/notifications", requireAuth, async (req, res) => {
   const { unread } = req.query;
+  if (req.user && req.user.role === "management") {
+    await runManagementOnDemandChecks(db);
+  }
   let notifs = await db.query.notificationsTable.findMany({
     where: eq(notificationsTable.userId, req.user!.id),
     orderBy: (n: any, { desc }: any) => [desc(n.createdAt)],

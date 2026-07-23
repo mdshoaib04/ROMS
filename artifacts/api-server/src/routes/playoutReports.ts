@@ -7,10 +7,24 @@ import { requireAuth, requireRole } from "../lib/auth";
 const router = Router();
 
 function toReport(r: any, roNumber: string, clientName: string) {
+  const scheduled = r.totalSpotsScheduled || 0;
+  const aired = r.totalSpotsAired || 0;
+  let variancePercent = 0;
+  let varianceFlag = "normal";
+  if (scheduled > 0) {
+    variancePercent = ((aired - scheduled) / scheduled) * 100;
+    if (variancePercent < -5) {
+      varianceFlag = "under-aired";
+    } else if (variancePercent > 5) {
+      varianceFlag = "over-aired";
+    }
+  }
   return {
     ...r,
     roNumber,
     clientName,
+    variancePercent,
+    varianceFlag,
     createdAt: r.createdAt.toISOString(),
   };
 }

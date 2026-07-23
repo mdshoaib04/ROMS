@@ -30,6 +30,8 @@ export interface PlayoutReport {
   /** @nullable */
   screenshotUrl?: string | null;
   status: PlayoutReportStatus;
+  variancePercent?: number;
+  varianceFlag?: string;
   createdBy: number;
   createdAt: string;
 }

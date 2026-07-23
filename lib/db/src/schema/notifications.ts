@@ -12,6 +12,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "invoice_delay",
   "ro_pending_approval",
   "invoice_pending_approval",
+  "ro_completed",
 ]);
 
 export const notificationsTable = pgTable("notifications", {

@@ -167,6 +167,7 @@ export async function initDatabase() {
         sent_at TIMESTAMP,
         approved_at TIMESTAMP,
         paid_at TIMESTAMP,
+        last_reminder_sent_at TIMESTAMP,
         created_by INTEGER NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()

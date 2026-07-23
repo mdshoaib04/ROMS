@@ -43,6 +43,7 @@ export const invoicesTable = pgTable("invoices", {
   sentAt: timestamp("sent_at"),
   approvedAt: timestamp("approved_at"),
   paidAt: timestamp("paid_at"),
+  lastReminderSentAt: timestamp("last_reminder_sent_at"),
   createdBy: integer("created_by").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

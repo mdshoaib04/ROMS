@@ -3,11 +3,15 @@ import { db } from "@workspace/db";
 import { paymentsTable, invoicesTable, clientsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth";
+import { runPaymentReminderEmails } from "../lib/onDemandChecks";
 
 const router = Router();
 
 router.get("/payments", requireAuth, async (req, res) => {
   const { invoiceId, clientId } = req.query;
+  if (req.user && (req.user.role === "management" || req.user.role === "operations")) {
+    await runPaymentReminderEmails(db);
+  }
   let payments = await db.query.paymentsTable.findMany({ orderBy: (p: any, { desc }: any) => [desc(p.createdAt)] });
 
   if (invoiceId) payments = payments.filter((p: any) => p.invoiceId === Number(invoiceId));

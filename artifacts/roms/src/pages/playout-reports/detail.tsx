@@ -59,15 +59,36 @@ export default function PlayoutReportDetail({ id: propId }: { id?: string }) {
               </div>
             </div>
 
-            <div className={`p-4 rounded-lg border flex justify-between items-center ${isShort ? 'bg-destructive/5 border-destructive/20' : 'bg-green-500/5 border-green-500/20'}`}>
+            <div className={`p-4 rounded-lg border flex justify-between items-center ${
+              report.varianceFlag === "under-aired"
+                ? "bg-destructive/5 border-destructive/20"
+                : report.varianceFlag === "over-aired"
+                ? "bg-yellow-500/5 border-yellow-500/20"
+                : "bg-green-500/5 border-green-500/20"
+            }`}>
               <div>
-                <p className="text-sm font-semibold mb-1">Spot Execution</p>
+                <p className="text-sm font-semibold mb-1">
+                  Spot Execution 
+                  {report.varianceFlag === "under-aired" && (
+                    <span className="text-xs font-normal text-destructive ml-2 font-mono">({report.variancePercent?.toFixed(1)}%)</span>
+                  )}
+                  {report.varianceFlag === "over-aired" && (
+                    <span className="text-xs font-normal text-yellow-600 ml-2 font-mono">(+{report.variancePercent?.toFixed(1)}%)</span>
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground">Actual vs Scheduled</p>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-mono font-bold flex items-center gap-2 justify-end">
-                  {isShort && <AlertCircle className="h-5 w-5 text-destructive" />}
-                  <span className={isShort ? "text-destructive" : "text-green-600"}>{report.totalSpotsAired}</span> 
+                  {report.varianceFlag === "under-aired" && <AlertCircle className="h-5 w-5 text-destructive" />}
+                  {report.varianceFlag === "over-aired" && <AlertCircle className="h-5 w-5 text-yellow-500" />}
+                  <span className={
+                    report.varianceFlag === "under-aired"
+                      ? "text-destructive"
+                      : report.varianceFlag === "over-aired"
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }>{report.totalSpotsAired}</span> 
                   <span className="text-muted-foreground text-lg">/ {report.totalSpotsScheduled}</span>
                 </div>
               </div>

@@ -103,8 +103,15 @@ export default function PlayoutReports() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{report.totalSpotsAired}</span>
                         <span className="text-muted-foreground text-xs">/ {report.totalSpotsScheduled}</span>
-                        {report.totalSpotsAired < report.totalSpotsScheduled && (
-                          <Badge variant="destructive" className="h-4 text-[10px] px-1 py-0 ml-1">Short</Badge>
+                        {report.varianceFlag === "under-aired" && (
+                          <Badge variant="destructive" className="h-5 text-[10px] px-1.5 py-0 ml-1 whitespace-nowrap">
+                            Under-aired ({Math.abs(report.variancePercent ?? 0).toFixed(1)}%)
+                          </Badge>
+                        )}
+                        {report.varianceFlag === "over-aired" && (
+                          <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white h-5 text-[10px] px-1.5 py-0 ml-1 whitespace-nowrap">
+                            Over-aired (+{Math.abs(report.variancePercent ?? 0).toFixed(1)}%)
+                          </Badge>
                         )}
                       </div>
                     </TableCell>

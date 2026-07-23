@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useListReleaseOrders, useCreatePlayoutReport } from "@workspace/api-client-react";
 import { z } from "zod";
@@ -37,8 +37,12 @@ export default function PlayoutReportNew() {
   const [editReference, setEditReference] = useState(false);
   const [editMetrics, setEditMetrics] = useState(false);
 
-  // Usually reports are made for active or recently stopped/completed ROs
-  const { data: ros, isLoading: loadingRos } = useListReleaseOrders({ status: 'active' });
+  // Fetch all ROs so completed ones are available for selection
+  const { data: ros, isLoading: loadingRos } = useListReleaseOrders();
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const qRoId = searchParams.get("releaseOrderId");
+  const roIdParam = qRoId ? parseInt(qRoId, 10) : null;
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -52,6 +56,37 @@ export default function PlayoutReportNew() {
       totalSpotsAired: 0,
     },
   });
+
+  useEffect(() => {
+    if (roIdParam && ros && ros.length > 0) {
+      const selectedRo = ros.find((r: any) => r.id === roIdParam);
+      if (selectedRo) {
+        form.setValue("releaseOrderId", roIdParam);
+        if (selectedRo.publishFrom) form.setValue('publishFrom', selectedRo.publishFrom);
+        if (selectedRo.publishTo) form.setValue('publishTo', selectedRo.publishTo);
+        
+        const from = new Date(selectedRo.publishFrom);
+        const to = new Date(selectedRo.publishTo);
+        const diffTime = Math.abs(to.getTime() - from.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        let channelsCount = 0;
+        if (selectedRo.scrollKannada) channelsCount++;
+        if (selectedRo.scrollMarathi) channelsCount++;
+        if (selectedRo.audioVideoKannada) channelsCount++;
+        if (selectedRo.audioVideoMarathi) channelsCount++;
+        
+        const scheduledSpots = diffDays * (selectedRo.repeatTimes || 0) * (channelsCount || 1);
+        form.setValue('totalSpotsScheduled', scheduledSpots);
+        form.setValue('totalSpotsAired', scheduledSpots);
+        
+        form.setValue('scrollKannadaDays', selectedRo.scrollKannada ? diffDays : 0);
+        form.setValue('scrollMarathiDays', selectedRo.scrollMarathi ? diffDays : 0);
+        form.setValue('videoKannadaDays', selectedRo.audioVideoKannada ? diffDays : 0);
+        form.setValue('videoMarathiDays', selectedRo.audioVideoMarathi ? diffDays : 0);
+      }
+    }
+  }, [roIdParam, ros]);
 
   const onSubmit = (values: z.infer<typeof schema>) => {
     createMut.mutate({ data: values }, {

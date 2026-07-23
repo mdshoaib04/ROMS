@@ -771,6 +771,8 @@ export const ListPlayoutReportsResponseItem = zod.object({
   "discrepancyNote": zod.string().nullish(),
   "screenshotUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted', 'invoiced']),
+  "variancePercent": zod.number().optional(),
+  "varianceFlag": zod.string().optional(),
   "createdBy": zod.number(),
   "createdAt": zod.string()
 })
@@ -812,6 +814,8 @@ export const CreatePlayoutReportResponse = zod.object({
   "discrepancyNote": zod.string().nullish(),
   "screenshotUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted', 'invoiced']),
+  "variancePercent": zod.number().optional(),
+  "varianceFlag": zod.string().optional(),
   "createdBy": zod.number(),
   "createdAt": zod.string()
 })
@@ -838,6 +842,8 @@ export const GetPlayoutReportResponse = zod.object({
   "discrepancyNote": zod.string().nullish(),
   "screenshotUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted', 'invoiced']),
+  "variancePercent": zod.number().optional(),
+  "varianceFlag": zod.string().optional(),
   "createdBy": zod.number(),
   "createdAt": zod.string()
 })
@@ -874,6 +880,8 @@ export const UpdatePlayoutReportResponse = zod.object({
   "discrepancyNote": zod.string().nullish(),
   "screenshotUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted', 'invoiced']),
+  "variancePercent": zod.number().optional(),
+  "varianceFlag": zod.string().optional(),
   "createdBy": zod.number(),
   "createdAt": zod.string()
 })
@@ -927,6 +935,7 @@ export const ListInvoicesResponseItem = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -998,6 +1007,7 @@ export const CreateInvoiceResponse = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -1047,6 +1057,7 @@ export const GetInvoiceResponse = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -1111,6 +1122,7 @@ export const UpdateInvoiceResponse = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -1160,6 +1172,7 @@ export const ApproveInvoiceResponse = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -1212,6 +1225,7 @@ export const SendInvoiceResponse = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()
@@ -1413,6 +1427,7 @@ export const GetPendingInvoicesResponseItem = zod.object({
   "sentAt": zod.string().nullish(),
   "approvedAt": zod.string().nullish(),
   "paidAt": zod.string().nullish(),
+  "lastReminderSentAt": zod.string().nullish(),
   "createdBy": zod.number().optional(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional()

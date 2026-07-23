@@ -121,13 +121,37 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 
   // Copy pdfkit's AFM font metric data files to dist/data
-  const sourceDir = path.resolve(artifactDir, "node_modules/pdfkit/js/data");
+  let sourceDir = path.resolve(artifactDir, "node_modules/pdfkit/js/data");
+  try {
+    const require = createRequire(import.meta.url);
+    const resolvedPath = require.resolve("pdfkit");
+    const resolvedDir = path.dirname(resolvedPath);
+    const resolvedDataDir = path.resolve(resolvedDir, "data");
+    const stat = await import("node:fs/promises").then(m => m.stat(resolvedDataDir));
+    if (stat.isDirectory()) {
+      sourceDir = resolvedDataDir;
+    }
+  } catch (e) {
+    // Fall back to hardcoded path
+  }
+
   const destDir = path.resolve(distDir, "data");
   await mkdir(destDir, { recursive: true });
   await cp(sourceDir, destDir, { recursive: true });
+
+  // Post-build validation: verify font files exist in dist/data
+  const checkFile = path.resolve(destDir, "Helvetica.afm");
+  try {
+    const stat = await import("node:fs/promises").then(m => m.stat(checkFile));
+    if (!stat.isFile() || stat.size === 0) {
+      throw new Error(`Helvetica.afm is not a valid file (size: ${stat.size})`);
+    }
+  } catch (e) {
+    throw new Error(`Font file verification failed after copy: ${e.message}`);
+  }
 }
 
 buildAll().catch((err) => {
-  console.error(err);
+  console.error("\n*** BUILD FAILED ***", err);
   process.exit(1);
 });

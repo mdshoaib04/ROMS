@@ -1299,6 +1299,10 @@ components:
         status:
           type: string
           enum: [draft, submitted, invoiced]
+        variancePercent:
+          type: number
+        varianceFlag:
+          type: string
         createdBy:
           type: integer
         createdAt:
@@ -1433,6 +1437,8 @@ components:
         approvedAt:
           type: ["string", "null"]
         paidAt:
+          type: ["string", "null"]
+        lastReminderSentAt:
           type: ["string", "null"]
         createdBy:
           type: integer

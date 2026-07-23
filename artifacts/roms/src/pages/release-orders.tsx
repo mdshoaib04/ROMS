@@ -27,7 +27,20 @@ export default function ReleaseOrders() {
     status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (ro: any) => {
+    const status = ro.status;
+    const todayStr = new Date().toISOString().split("T")[0];
+    const isMissedStart = status === 'pending_approval' && todayStr >= ro.publishFrom;
+
+    if (isMissedStart) {
+      return (
+        <div className="flex flex-col gap-1 items-start">
+          <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700">Pending</Badge>
+          <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-1.5 py-0 whitespace-nowrap">Start date missed</Badge>
+        </div>
+      );
+    }
+
     switch (status) {
       case 'active': return <Badge className="bg-emerald-500 hover:bg-emerald-600">Active</Badge>;
       case 'pending_approval': return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/30">Pending</Badge>;
@@ -144,7 +157,7 @@ export default function ReleaseOrders() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(ro.status)}
+                      {getStatusBadge(ro)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild>

@@ -2,7 +2,9 @@ import {
   useGetDashboardSummary, 
   useGetActiveMedia, 
   useGetExpiringSoon, 
-  useGetPendingInvoices 
+  useGetPendingInvoices,
+  useListReleaseOrders,
+  useListPlayoutReports
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +31,19 @@ export default function Dashboard() {
   const { data: activeMedia, isLoading: isLoadingMedia } = useGetActiveMedia();
   const { data: expiringSoon, isLoading: isLoadingExpiring } = useGetExpiringSoon();
   const { data: pendingInvoices, isLoading: isLoadingInvoices } = useGetPendingInvoices();
+  const { data: releaseOrders } = useListReleaseOrders();
+  const { data: playoutReports } = useListPlayoutReports();
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const missedStartROs = releaseOrders?.filter((ro: any) => 
+    ro.status === 'pending_approval' && todayStr >= ro.publishFrom
+  ) || [];
+
+  const pendingPlayoutROs = releaseOrders?.filter((ro: any) => {
+    if (ro.status !== 'completed') return false;
+    const hasReport = playoutReports?.some((pr: any) => pr.releaseOrderId === ro.id);
+    return !hasReport;
+  }) || [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
@@ -157,6 +172,55 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-auto">
+            {/* Missed Start Date ROs (Management & Operations) */}
+            {(role === 'management' || role === 'operations') && missedStartROs.length > 0 && (
+              <div className="p-4 border-b bg-destructive/5">
+                <h4 className="font-semibold text-sm mb-3 flex items-center justify-between text-destructive">
+                  Missed Start Dates (Needs Approval)
+                  <Badge className="bg-red-600 text-white font-mono h-5">
+                    {missedStartROs.length}
+                  </Badge>
+                </h4>
+                <div className="space-y-2">
+                  {missedStartROs.map((ro: any) => (
+                    <div key={ro.id} className="flex justify-between items-center bg-background p-2 rounded border border-destructive/20 shadow-sm">
+                      <div>
+                        <Link href={`/release-orders/${ro.id}`} className="font-mono text-sm text-primary hover:underline font-semibold">{ro.roNumber}</Link>
+                        <p className="text-xs truncate max-w-[150px] font-medium">{ro.clientName}</p>
+                      </div>
+                      <Badge className="bg-red-600 text-white text-[10px] whitespace-nowrap h-5">
+                        Due {format(new Date(ro.publishFrom), "MMM d")}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pending Playout Reports (Coordinator & Operations) */}
+            {(role === 'coordinator' || role === 'operations' || role === 'management') && pendingPlayoutROs.length > 0 && (
+              <div className="p-4 border-b bg-orange-500/5">
+                <h4 className="font-semibold text-sm mb-3 flex items-center justify-between text-orange-700">
+                  Playout Reports Pending
+                  <Badge variant="outline" className="bg-orange-500/20 text-orange-700 border-orange-500/30 font-mono h-5">
+                    {pendingPlayoutROs.length}
+                  </Badge>
+                </h4>
+                <div className="space-y-2">
+                  {pendingPlayoutROs.map((ro: any) => (
+                    <div key={ro.id} className="flex justify-between items-center bg-background p-2 rounded border border-orange-500/20 shadow-sm">
+                      <div>
+                        <Link href={`/release-orders/${ro.id}`} className="font-mono text-sm text-primary hover:underline font-semibold">{ro.roNumber}</Link>
+                        <p className="text-xs truncate max-w-[150px] font-medium">{ro.clientName}</p>
+                      </div>
+                      <Button size="sm" variant="outline" asChild className="h-7 text-xs border-orange-500/30 hover:bg-orange-500/10">
+                        <Link href={`/playout-reports/new?releaseOrderId=${ro.id}`}>File Report</Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* Expiring Soon (Coordinator & Operations) */}
             {(role === 'coordinator' || role === 'operations' || role === 'management') && (

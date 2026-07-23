@@ -69,6 +69,8 @@ export interface Invoice {
   approvedAt?: string | null;
   /** @nullable */
   paidAt?: string | null;
+  /** @nullable */
+  lastReminderSentAt?: string | null;
   createdBy?: number;
   createdAt: string;
   updatedAt?: string;

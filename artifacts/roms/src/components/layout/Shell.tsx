@@ -13,7 +13,8 @@ import {
   UserCog, 
   Bell,
   LogOut,
-  Menu
+  Menu,
+  TrendingUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -74,6 +75,7 @@ export function Shell({ children }: ShellProps) {
     { label: "Invoices", href: "/invoices", icon: Receipt, roles: ["management", "operations"] },
     { label: "Payments", href: "/payments", icon: Receipt, roles: ["management", "operations"] },
     { label: "Agencies", href: "/agencies", icon: Building2, roles: ["management", "operations"] },
+    { label: "Reports", href: "/reports", icon: TrendingUp, roles: ["management", "operations"] },
     { label: "Users", href: "/users", icon: UserCog, roles: ["management"] },
   ];
 

@@ -6,11 +6,20 @@ import {
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { syncAllReleaseOrders } from "../lib/roSync";
+import { runManagementOnDemandChecks, runPaymentReminderEmails } from "../lib/onDemandChecks";
 
 const router = Router();
 
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
   await syncAllReleaseOrders(db);
+  if (req.user) {
+    if (req.user.role === "management") {
+      await runManagementOnDemandChecks(db);
+    }
+    if (req.user.role === "management" || req.user.role === "operations") {
+      await runPaymentReminderEmails(db);
+    }
+  }
   const now = new Date();
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const sevenDaysStr = sevenDaysLater.toISOString().split("T")[0];

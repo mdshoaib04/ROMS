@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { invoicesTable, clientsTable, agenciesTable, releaseOrdersTable, notificationsTable, usersTable } from "@workspace/db";
+import { invoicesTable, clientsTable, agenciesTable, releaseOrdersTable, notificationsTable, usersTable, playoutReportsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth";
-import { generateInvoicePdf, sendInvoiceEmail } from "../lib/email";
+import { generateInvoicePdf, sendInvoiceEmail, generatePlayoutReportPdf } from "../lib/email";
+import { runPaymentReminderEmails } from "../lib/onDemandChecks";
+
 
 const router = Router();
 
@@ -67,6 +69,7 @@ function toInvoice(inv: any, clientName: string, clientAddress: string, clientGs
     sentAt: inv.sentAt?.toISOString() || null,
     approvedAt: inv.approvedAt?.toISOString() || null,
     paidAt: inv.paidAt?.toISOString() || null,
+    lastReminderSentAt: inv.lastReminderSentAt?.toISOString() || null,
     createdAt: inv.createdAt.toISOString(),
     updatedAt: inv.updatedAt.toISOString(),
   };
@@ -74,6 +77,9 @@ function toInvoice(inv: any, clientName: string, clientAddress: string, clientGs
 
 router.get("/invoices", requireAuth, async (req, res) => {
   const { status, clientId, month } = req.query;
+  if (req.user && (req.user.role === "management" || req.user.role === "operations")) {
+    await runPaymentReminderEmails(db);
+  }
   let invs = await db.query.invoicesTable.findMany({ orderBy: (i: any, { desc }: any) => [desc(i.createdAt)] });
 
   if (status) invs = invs.filter((i: any) => i.status === status);
@@ -197,7 +203,15 @@ router.post("/invoices/:id/send", requireAuth, requireRole("operations"), async 
 
   try {
     const pdfBuffer = await generateInvoicePdf(inv, client);
-    await sendInvoiceEmail(inv, client, pdfBuffer);
+    let playoutReportPdfBuffer = null;
+    if (inv.playoutReportId) {
+      const report = await db.query.playoutReportsTable.findFirst({ where: eq(playoutReportsTable.id, inv.playoutReportId) });
+      const ro = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, inv.releaseOrderId) });
+      if (report) {
+        playoutReportPdfBuffer = await generatePlayoutReportPdf(report, ro);
+      }
+    }
+    await sendInvoiceEmail(inv, client, pdfBuffer, playoutReportPdfBuffer);
   } catch (err: any) {
     console.error("Email send failure:", err);
     res.status(500).json({ error: `Failed to deliver invoice email to ${client.email || 'client'}: ${err.message || 'SMTP connection error'}` });

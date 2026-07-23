@@ -3,7 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { Shell } from './components/layout/Shell';
 
 import Login from './pages/login';
@@ -24,6 +24,7 @@ import Payments from './pages/payments';
 import Agencies from './pages/agencies';
 import Users from './pages/users';
 import Notifications from './pages/notifications';
+import Reports from './pages/reports';
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/agencies" component={() => <ProtectedRoute component={Agencies} />} />
       <Route path="/users" component={() => <ProtectedRoute component={Users} />} />
       <Route path="/notifications" component={() => <ProtectedRoute component={Notifications} />} />
+      <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
 
       <Route component={NotFound} />
     </Switch>

@@ -114,7 +114,16 @@ export default function Invoices() {
                     <TableCell className="text-right text-destructive font-semibold">
                       ₹{inv.dueAmount?.toLocaleString() || 0}
                     </TableCell>
-                    <TableCell>{getStatusBadge(inv.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-0.5 items-start">
+                        {getStatusBadge(inv.status)}
+                        {inv.lastReminderSentAt && (
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap" title={`Last reminder: ${format(new Date(inv.lastReminderSentAt), "dd MMM yyyy, hh:mm a")}`}>
+                            Reminded: {format(new Date(inv.lastReminderSentAt), "dd MMM")}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/invoices/${inv.id}`}><Eye className="h-4 w-4" /></Link>

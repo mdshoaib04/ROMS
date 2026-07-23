@@ -331,6 +331,8 @@ export interface PlayoutReport {
   /** @nullable */
   screenshotUrl?: string | null;
   status: PlayoutReportStatus;
+  variancePercent?: number;
+  varianceFlag?: string;
   createdBy: number;
   createdAt: string;
 }
@@ -445,6 +447,8 @@ export interface Invoice {
   approvedAt?: string | null;
   /** @nullable */
   paidAt?: string | null;
+  /** @nullable */
+  lastReminderSentAt?: string | null;
   createdBy?: number;
   createdAt: string;
   updatedAt?: string;
