@@ -39,7 +39,10 @@ export default function Reports() {
     if (selectedMonth !== "all") params.append("month", selectedMonth);
     if (params.toString()) url += `?${params.toString()}`;
 
-    fetch(url)
+    const token = localStorage.getItem('token');
+    fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
