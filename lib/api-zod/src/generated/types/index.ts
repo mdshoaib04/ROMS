@@ -48,6 +48,7 @@ export * from './releaseOrderStatus';
 export * from './releaseOrderUpdate';
 export * from './revisionInput';
 export * from './stopOrderInput';
+export * from './upcomingReleaseOrder';
 export * from './user';
 export * from './userInput';
 export * from './userInputRole';

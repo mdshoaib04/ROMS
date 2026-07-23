@@ -40,13 +40,14 @@ export const invoicesTable = pgTable("invoices", {
   paidAmount: numeric("paid_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   commissionAmount: numeric("commission_amount", { precision: 12, scale: 2 }),
   status: invoiceStatusEnum("status").notNull().default("draft"),
-  sentAt: timestamp("sent_at"),
-  approvedAt: timestamp("approved_at"),
-  paidAt: timestamp("paid_at"),
-  lastReminderSentAt: timestamp("last_reminder_sent_at"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  lastReminderSentAt: timestamp("last_reminder_sent_at", { withTimezone: true }),
+  invoiceDate: text("invoice_date"),
   createdBy: integer("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoicesTable).omit({

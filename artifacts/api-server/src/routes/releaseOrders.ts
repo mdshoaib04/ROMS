@@ -139,6 +139,17 @@ router.post("/release-orders/:id/approve", requireAuth, requireRole("management"
   await syncAllReleaseOrders(db);
   const syncedRo = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, id) });
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) });
+
+  // Notify the creator of the RO of the approval
+  await db.insert(notificationsTable).values({
+    userId: ro.createdBy,
+    message: `Your RO ${ro.roNumber} for ${client?.name || "Unknown"} has been approved`,
+    type: "ro_approved",
+    relatedId: ro.id,
+    relatedType: "release_order",
+    isRead: false,
+  });
+
   res.json(toRO(syncedRo || ro, client?.name || "Unknown"));
 });
 
@@ -150,6 +161,17 @@ router.post("/release-orders/:id/reject", requireAuth, requireRole("management")
     .where(eq(releaseOrdersTable.id, id)).returning();
   if (!ro) { res.status(404).json({ error: "Not found" }); return; }
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) });
+
+  // Notify the creator of the RO of the rejection
+  await db.insert(notificationsTable).values({
+    userId: ro.createdBy,
+    message: `Your RO ${ro.roNumber} for ${client?.name || "Unknown"} has been rejected: ${reason || ""}`,
+    type: "ro_rejected",
+    relatedId: ro.id,
+    relatedType: "release_order",
+    isRead: false,
+  });
+
   res.json(toRO(ro, client?.name || "Unknown"));
 });
 

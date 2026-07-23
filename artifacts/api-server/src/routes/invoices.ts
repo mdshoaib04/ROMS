@@ -104,39 +104,74 @@ router.get("/invoices", requireAuth, async (req, res) => {
 });
 
 router.post("/invoices", requireAuth, requireRole("operations", "management"), async (req, res) => {
+  const playoutReportId = Number(req.body.playoutReportId);
+  const pr = await db.query.playoutReportsTable.findFirst({ where: eq(playoutReportsTable.id, playoutReportId) });
+  if (!pr) {
+    res.status(400).json({ error: "Invalid playoutReportId" });
+    return;
+  }
+  const ro = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, pr.releaseOrderId) });
+  const roRate = ro?.ratePerDay ? Number(ro.ratePerDay) : 0;
+
+  const clientId = req.body.clientId || ro?.clientId || pr.clientId;
+  const releaseOrderId = req.body.releaseOrderId || pr.releaseOrderId;
+  const publishFrom = req.body.publishFrom || pr.publishFrom;
+  const publishTo = req.body.publishTo || pr.publishTo;
+
+  const scrollKannadaDays = req.body.scrollKannadaDays !== undefined ? Number(req.body.scrollKannadaDays) : (pr.scrollKannadaDays || 0);
+  const scrollMarathiDays = req.body.scrollMarathiDays !== undefined ? Number(req.body.scrollMarathiDays) : (pr.scrollMarathiDays || 0);
+  const videoKannadaDays = req.body.videoKannadaDays !== undefined ? Number(req.body.videoKannadaDays) : (pr.videoKannadaDays || 0);
+  const videoMarathiDays = req.body.videoMarathiDays !== undefined ? Number(req.body.videoMarathiDays) : (pr.videoMarathiDays || 0);
+
+  const scrollKannadaRate = req.body.scrollKannadaRate !== undefined ? Number(req.body.scrollKannadaRate) : (ro?.scrollKannada ? roRate : 0);
+  const scrollMarathiRate = req.body.scrollMarathiRate !== undefined ? Number(req.body.scrollMarathiRate) : (ro?.scrollMarathi ? roRate : 0);
+  const videoKannadaRate = req.body.videoKannadaRate !== undefined ? Number(req.body.videoKannadaRate) : (ro?.audioVideoKannada ? roRate : 0);
+  const videoMarathiRate = req.body.videoMarathiRate !== undefined ? Number(req.body.videoMarathiRate) : (ro?.audioVideoMarathi ? roRate : 0);
+
+  const videoCreativeCharges = req.body.videoCreativeCharges !== undefined ? Number(req.body.videoCreativeCharges) : 0;
+  const includeGst = req.body.includeGst !== false;
+
+  const bodyForTotals = {
+    scrollKannadaDays, scrollKannadaRate,
+    scrollMarathiDays, scrollMarathiRate,
+    videoKannadaDays, videoKannadaRate,
+    videoMarathiDays, videoMarathiRate,
+    videoCreativeCharges,
+    includeGst,
+    cgstPercent: req.body.cgstPercent,
+    sgstPercent: req.body.sgstPercent
+  };
+
   const invoiceNumber = await generateInvoiceNumber();
-  const { subtotal, cgstAmount, sgstAmount, totalAmount } = calcTotals(req.body);
+  const { subtotal, cgstAmount, sgstAmount, totalAmount } = calcTotals(bodyForTotals);
 
   // calc commission if agency present
   let commissionAmount = null;
-  if (req.body.agencyId) {
-    const agency = await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, req.body.agencyId) });
+  const agencyId = req.body.agencyId || ro?.agencyId || null;
+  if (agencyId) {
+    const agency = await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, agencyId) });
     if (agency) commissionAmount = (totalAmount * Number(agency.commissionPercent)) / 100;
   }
 
-  const ro = req.body.releaseOrderId
-    ? await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, req.body.releaseOrderId) })
-    : null;
-
   const [inv] = await db.insert(invoicesTable).values({
     invoiceNumber,
-    clientId: req.body.clientId,
-    releaseOrderId: req.body.releaseOrderId,
-    playoutReportId: req.body.playoutReportId || null,
-    agencyId: req.body.agencyId || null,
+    clientId,
+    releaseOrderId,
+    playoutReportId,
+    agencyId,
     roReference: req.body.roReference || ro?.clientRoReference || ro?.roNumber,
-    publishFrom: req.body.publishFrom,
-    publishTo: req.body.publishTo,
-    scrollKannadaDays: req.body.scrollKannadaDays || null,
-    scrollKannadaRate: req.body.scrollKannadaRate ? String(req.body.scrollKannadaRate) : null,
-    scrollMarathiDays: req.body.scrollMarathiDays || null,
-    scrollMarathiRate: req.body.scrollMarathiRate ? String(req.body.scrollMarathiRate) : null,
-    videoKannadaDays: req.body.videoKannadaDays || null,
-    videoKannadaRate: req.body.videoKannadaRate ? String(req.body.videoKannadaRate) : null,
-    videoMarathiDays: req.body.videoMarathiDays || null,
-    videoMarathiRate: req.body.videoMarathiRate ? String(req.body.videoMarathiRate) : null,
-    videoCreativeCharges: req.body.videoCreativeCharges ? String(req.body.videoCreativeCharges) : null,
-    includeGst: req.body.includeGst !== false,
+    publishFrom,
+    publishTo,
+    scrollKannadaDays,
+    scrollKannadaRate: String(scrollKannadaRate),
+    scrollMarathiDays,
+    scrollMarathiRate: String(scrollMarathiRate),
+    videoKannadaDays,
+    videoKannadaRate: String(videoKannadaRate),
+    videoMarathiDays,
+    videoMarathiRate: String(videoMarathiRate),
+    videoCreativeCharges: String(videoCreativeCharges),
+    includeGst,
     cgstPercent: String(req.body.cgstPercent || 9),
     sgstPercent: String(req.body.sgstPercent || 9),
     subtotal: String(subtotal),
@@ -146,6 +181,7 @@ router.post("/invoices", requireAuth, requireRole("operations", "management"), a
     paidAmount: "0",
     commissionAmount: commissionAmount ? String(commissionAmount) : null,
     status: "draft",
+    invoiceDate: req.body.invoiceDate || null,
     createdBy: req.user!.id,
   }).returning();
 
@@ -157,8 +193,8 @@ router.post("/invoices", requireAuth, requireRole("operations", "management"), a
     inv.id
   );
 
-  const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, req.body.clientId) });
-  const agency = req.body.agencyId ? await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, req.body.agencyId) }) : null;
+  const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, clientId) });
+  const agency = agencyId ? await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, agencyId) }) : null;
 
   res.status(201).json(toInvoice(inv, client?.name || "", client?.address || "", client?.gstNumber || null, agency?.name));
 });

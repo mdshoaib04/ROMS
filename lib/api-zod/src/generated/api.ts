@@ -905,6 +905,7 @@ export const ListInvoicesResponseItem = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -949,7 +950,8 @@ export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem)
 export const CreateInvoiceBody = zod.object({
   "clientId": zod.number(),
   "releaseOrderId": zod.number(),
-  "playoutReportId": zod.number().optional(),
+  "playoutReportId": zod.number(),
+  "invoiceDate": zod.string().optional(),
   "agencyId": zod.number().optional(),
   "roReference": zod.string().optional(),
   "publishFrom": zod.string(),
@@ -977,6 +979,7 @@ export const CreateInvoiceResponse = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1027,6 +1030,7 @@ export const GetInvoiceResponse = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1069,6 +1073,7 @@ export const UpdateInvoiceParams = zod.object({
 })
 
 export const UpdateInvoiceBody = zod.object({
+  "invoiceDate": zod.string().optional(),
   "scrollKannadaDays": zod.number().optional(),
   "scrollKannadaRate": zod.number().optional(),
   "scrollMarathiDays": zod.number().optional(),
@@ -1092,6 +1097,7 @@ export const UpdateInvoiceResponse = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1142,6 +1148,7 @@ export const ApproveInvoiceResponse = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1195,6 +1202,7 @@ export const SendInvoiceResponse = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1397,6 +1405,7 @@ export const GetPendingInvoicesResponseItem = zod.object({
   "clientGst": zod.string().nullish(),
   "releaseOrderId": zod.number().optional(),
   "playoutReportId": zod.number().nullish(),
+  "invoiceDate": zod.string().nullish(),
   "agencyId": zod.number().nullish(),
   "agencyName": zod.string().nullish(),
   "roReference": zod.string().nullish(),
@@ -1436,6 +1445,20 @@ export const GetPendingInvoicesResponse = zod.array(GetPendingInvoicesResponseIt
 
 
 /**
+ * @summary Release orders starting within 7 days
+ */
+export const GetUpcomingReleaseOrdersResponseItem = zod.object({
+  "id": zod.number(),
+  "roNumber": zod.string(),
+  "clientName": zod.string(),
+  "publishFrom": zod.string(),
+  "daysAway": zod.number(),
+  "mediaTypes": zod.array(zod.string())
+})
+export const GetUpcomingReleaseOrdersResponse = zod.array(GetUpcomingReleaseOrdersResponseItem)
+
+
+/**
  * @summary List notifications for the current user
  */
 export const ListNotificationsQueryParams = zod.object({
@@ -1445,7 +1468,7 @@ export const ListNotificationsQueryParams = zod.object({
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.number(),
   "message": zod.string(),
-  "type": zod.enum(['ro_approved', 'ro_rejected', 'ro_expiring', 'invoice_overdue', 'playout_report_ready', 'coordinator_absent', 'invoice_delay', 'ro_pending_approval', 'invoice_pending_approval']),
+  "type": zod.enum(['ro_approved', 'ro_rejected', 'ro_expiring', 'invoice_overdue', 'playout_report_ready', 'coordinator_absent', 'invoice_delay', 'ro_pending_approval', 'invoice_pending_approval', 'coordinator_start_reminder']),
   "relatedId": zod.number().nullish(),
   "relatedType": zod.string().nullish(),
   "isRead": zod.boolean(),

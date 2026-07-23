@@ -19,4 +19,5 @@ export const NotificationType = {
   invoice_delay: 'invoice_delay',
   ro_pending_approval: 'ro_pending_approval',
   invoice_pending_approval: 'invoice_pending_approval',
+  coordinator_start_reminder: 'coordinator_start_reminder',
 } as const;

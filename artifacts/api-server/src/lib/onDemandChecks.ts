@@ -5,20 +5,10 @@ import { generateInvoicePdf, generatePlayoutReportPdf, sendPaymentReminderEmail 
 
 function getLocalDbTime(date: any): number {
   if (!date) return 0;
-  const d = new Date(date);
-  return new Date(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate(),
-    d.getUTCHours(),
-    d.getUTCMinutes(),
-    d.getUTCSeconds(),
-    d.getUTCMilliseconds()
-  ).getTime();
+  return new Date(date).getTime();
 }
 
 export async function runManagementOnDemandChecks(dbConn: any) {
-  const todayStr = new Date().toISOString().split("T")[0];
   const now = new Date();
 
   // Get managers
@@ -27,35 +17,54 @@ export async function runManagementOnDemandChecks(dbConn: any) {
   });
   if (managers.length === 0) return;
 
-  // 1. Missed Start Date Check:
-  // Find pending_approval ROs where publishFrom <= today
+  // 1. Proactive Recurring Approval Pending Reminders Check:
   const pendingROs = await dbConn.query.releaseOrdersTable.findMany({
     where: eq(releaseOrdersTable.status, "pending_approval"),
   });
 
+  const APPROVAL_REMINDER_MS = process.env.APPROVAL_REMINDER_THRESHOLD_MS
+    ? parseInt(process.env.APPROVAL_REMINDER_THRESHOLD_MS, 10)
+    : 48 * 60 * 60 * 1000; // 48 hours
+
   for (const ro of pendingROs) {
-    if (todayStr >= ro.publishFrom) {
-      for (const mgr of managers) {
-        // Check for existing unread notification of same type for this RO and user
-        const existing = await dbConn.query.notificationsTable.findFirst({
-          where: and(
-            eq(notificationsTable.userId, mgr.id),
-            eq(notificationsTable.relatedId, ro.id),
-            eq(notificationsTable.relatedType, "release_order"),
-            eq(notificationsTable.isRead, false),
-            sql`message LIKE '%was due to start on%'`
-          ),
+    const elapsedMs = now.getTime() - getLocalDbTime(ro.createdAt);
+    console.log(`[DEBUG_TIME] RO ${ro.roNumber}:`);
+    console.log(`- now: ${now.getTime()} (${now.toISOString()})`);
+    console.log(`- ro.createdAt: ${ro.createdAt} (type: ${typeof ro.createdAt})`);
+    console.log(`- getLocalDbTime(ro.createdAt): ${getLocalDbTime(ro.createdAt)}`);
+    console.log(`- elapsedMs: ${elapsedMs} (threshold: ${APPROVAL_REMINDER_MS})`);
+    if (elapsedMs >= APPROVAL_REMINDER_MS) {
+      let shouldSend = false;
+      if (!ro.lastApprovalReminderSentAt) {
+        shouldSend = true;
+      } else {
+        const timeSinceLastReminder = now.getTime() - getLocalDbTime(ro.lastApprovalReminderSentAt);
+        if (timeSinceLastReminder >= APPROVAL_REMINDER_MS) {
+          shouldSend = true;
+        }
+      }
+
+      if (shouldSend) {
+        const client = await dbConn.query.clientsTable.findFirst({
+          where: eq(clientsTable.id, ro.clientId),
         });
-        if (!existing) {
+        const clientName = client ? client.name : "Unknown";
+        const hoursPending = Math.round(elapsedMs / (1000 * 60 * 60));
+
+        for (const mgr of managers) {
           await dbConn.insert(notificationsTable).values({
             userId: mgr.id,
-            message: `RO ${ro.roNumber} was due to start on ${ro.publishFrom} but is still pending approval`,
+            message: `RO ${ro.roNumber} for ${clientName} has been pending approval for ${hoursPending} hours — please review.`,
             type: "ro_pending_approval",
             relatedId: ro.id,
             relatedType: "release_order",
             isRead: false,
           });
         }
+
+        await dbConn.update(releaseOrdersTable)
+          .set({ lastApprovalReminderSentAt: now })
+          .where(eq(releaseOrdersTable.id, ro.id));
       }
     }
   }
@@ -212,6 +221,63 @@ export async function runPaymentReminderEmails(dbConn: any) {
           }
         }
       }
+    }
+  }
+}
+
+export async function runCoordinatorOnDemandChecks(dbConn: any) {
+  const now = new Date();
+  const coordinators = await dbConn.query.usersTable.findMany({
+    where: eq(usersTable.role, "coordinator"),
+  });
+  if (coordinators.length === 0) return;
+
+  const approvedROs = await dbConn.query.releaseOrdersTable.findMany({
+    where: and(
+      eq(releaseOrdersTable.status, "approved"),
+      eq(releaseOrdersTable.startReminderSent, false)
+    ),
+  });
+
+  const START_REMINDER_THRESHOLD_MS = process.env.COORDINATOR_START_REMINDER_THRESHOLD_MS
+    ? parseInt(process.env.COORDINATOR_START_REMINDER_THRESHOLD_MS, 10)
+    : 48 * 60 * 60 * 1000; // 48 hours
+
+  for (const ro of approvedROs) {
+    const publishFromDate = new Date(ro.publishFrom + "T00:00:00");
+    const diffMs = publishFromDate.getTime() - now.getTime();
+    if (diffMs <= START_REMINDER_THRESHOLD_MS) {
+      const client = await dbConn.query.clientsTable.findFirst({
+        where: eq(clientsTable.id, ro.clientId),
+      });
+      const clientName = client ? client.name : "Unknown";
+
+      for (const coord of coordinators) {
+        // Prevent exact duplicate unread messages
+        const existing = await dbConn.query.notificationsTable.findFirst({
+          where: and(
+            eq(notificationsTable.userId, coord.id),
+            eq(notificationsTable.relatedId, ro.id),
+            eq(notificationsTable.relatedType, "release_order"),
+            eq(notificationsTable.isRead, false),
+            eq(notificationsTable.type, "coordinator_start_reminder")
+          ),
+        });
+        if (!existing) {
+          await dbConn.insert(notificationsTable).values({
+            userId: coord.id,
+            message: `Approved RO ${ro.roNumber} for ${clientName} is scheduled to start on ${ro.publishFrom} — please prepare.`,
+            type: "coordinator_start_reminder",
+            relatedId: ro.id,
+            relatedType: "release_order",
+            isRead: false,
+          });
+        }
+      }
+
+      await dbConn.update(releaseOrdersTable)
+        .set({ startReminderSent: true })
+        .where(eq(releaseOrdersTable.id, ro.id));
     }
   }
 }

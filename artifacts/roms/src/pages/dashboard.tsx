@@ -4,7 +4,8 @@ import {
   useGetExpiringSoon, 
   useGetPendingInvoices,
   useListReleaseOrders,
-  useListPlayoutReports
+  useListPlayoutReports,
+  useGetUpcomingReleaseOrders
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,11 +34,9 @@ export default function Dashboard() {
   const { data: pendingInvoices, isLoading: isLoadingInvoices } = useGetPendingInvoices();
   const { data: releaseOrders } = useListReleaseOrders();
   const { data: playoutReports } = useListPlayoutReports();
+  const { data: upcomingROs } = useGetUpcomingReleaseOrders({ query: { enabled: role === "management" || role === "coordinator" } as any });
 
   const todayStr = new Date().toISOString().split("T")[0];
-  const missedStartROs = releaseOrders?.filter((ro: any) => 
-    ro.status === 'pending_approval' && todayStr >= ro.publishFrom
-  ) || [];
 
   const pendingPlayoutROs = releaseOrders?.filter((ro: any) => {
     if (ro.status !== 'completed') return false;
@@ -172,27 +171,37 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-auto">
-            {/* Missed Start Date ROs (Management & Operations) */}
-            {(role === 'management' || role === 'operations') && missedStartROs.length > 0 && (
-              <div className="p-4 border-b bg-destructive/5">
-                <h4 className="font-semibold text-sm mb-3 flex items-center justify-between text-destructive">
-                  Missed Start Dates (Needs Approval)
-                  <Badge className="bg-red-600 text-white font-mono h-5">
-                    {missedStartROs.length}
+            {/* Upcoming Release Orders (Management & Coordinator) */}
+            {(role === 'management' || role === 'coordinator') && (
+              <div className="p-4 border-b bg-primary/5">
+                <h4 className="font-semibold text-sm mb-3 flex items-center justify-between text-primary">
+                  Upcoming Release Orders (Approved)
+                  <Badge className="bg-primary text-primary-foreground font-mono h-5">
+                    {upcomingROs?.length || 0}
                   </Badge>
                 </h4>
                 <div className="space-y-2">
-                  {missedStartROs.map((ro: any) => (
-                    <div key={ro.id} className="flex justify-between items-center bg-background p-2 rounded border border-destructive/20 shadow-sm">
-                      <div>
-                        <Link href={`/release-orders/${ro.id}`} className="font-mono text-sm text-primary hover:underline font-semibold">{ro.roNumber}</Link>
-                        <p className="text-xs truncate max-w-[150px] font-medium">{ro.clientName}</p>
+                  {upcomingROs && upcomingROs.length > 0 ? (
+                    upcomingROs.map((ro) => (
+                      <div key={ro.id} className="flex justify-between items-start bg-background p-3 rounded border shadow-sm gap-2">
+                        <div className="space-y-1">
+                          <Link href={`/release-orders/${ro.id}`} className="font-mono text-sm text-primary hover:underline font-semibold">{ro.roNumber}</Link>
+                          <p className="text-xs font-semibold text-foreground/80">{ro.clientName}</p>
+                          <p className="text-[10px] text-muted-foreground">{ro.mediaTypes.join(", ")}</p>
+                        </div>
+                        <div className="text-right whitespace-nowrap">
+                          <Badge className="bg-primary text-primary-foreground text-[10px] h-5 mb-1">
+                            {format(new Date(ro.publishFrom), "MMM d")}
+                          </Badge>
+                          <p className="text-[10px] text-muted-foreground font-semibold">
+                            {ro.daysAway === 0 ? "Starts today" : ro.daysAway === 1 ? "In 1 day" : `In ${ro.daysAway} days`}
+                          </p>
+                        </div>
                       </div>
-                      <Badge className="bg-red-600 text-white text-[10px] whitespace-nowrap h-5">
-                        Due {format(new Date(ro.publishFrom), "MMM d")}
-                      </Badge>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center p-2">No upcoming release orders starting within 7 days.</p>
+                  )}
                 </div>
               </div>
             )}

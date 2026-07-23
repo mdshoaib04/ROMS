@@ -54,6 +54,7 @@ export default function ReleaseOrderNew() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      roDate: new Date(),
       scrollKannada: false,
       scrollMarathi: false,
       audioVideoKannada: false,

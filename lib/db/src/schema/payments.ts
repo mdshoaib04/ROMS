@@ -12,7 +12,7 @@ export const paymentsTable = pgTable("payments", {
   paymentReference: text("payment_reference"),
   paymentDate: text("payment_date").notNull(),
   notes: text("notes"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertPaymentSchema = createInsertSchema(paymentsTable).omit({ id: true, createdAt: true });

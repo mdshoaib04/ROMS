@@ -5,14 +5,17 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { ChevronLeft, Loader2, FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, Loader2, FileSpreadsheet, CalendarIcon } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const schema = z.object({
   releaseOrderId: z.coerce.number().min(1, "Release Order is required"),
@@ -164,9 +167,28 @@ export default function PlayoutReportNew() {
               )} />
               
               <FormField control={form.control} name="reportDate" render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Date of Report</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
+                          {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -180,17 +202,88 @@ export default function PlayoutReportNew() {
               )} />
               
               <FormField control={form.control} name="publishFrom" render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Execution From</FormLabel>
-                  <FormControl><Input type="date" disabled={!editReference} {...field} /></FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          disabled={!editReference}
+                          className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
+                          {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )} />
 
               <FormField control={form.control} name="publishTo" render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Execution To</FormLabel>
-                  <FormControl><Input type="date" disabled={!editReference} {...field} /></FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          disabled={!editReference}
+                          className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
+                          {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                          // trigger spots schedule recalculation if edit is enabled or details loaded
+                          if (form.getValues("releaseOrderId")) {
+                            const roId = Number(form.getValues("releaseOrderId"));
+                            const selectedRo = ros?.find(r => r.id === roId);
+                            if (selectedRo) {
+                              const fromStr = form.getValues("publishFrom");
+                              const toStr = date ? format(date, "yyyy-MM-dd") : "";
+                              if (fromStr && toStr) {
+                                const from = new Date(fromStr);
+                                const to = new Date(toStr);
+                                const diffTime = Math.abs(to.getTime() - from.getTime());
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                
+                                let channelsCount = 0;
+                                if (selectedRo.scrollKannada) channelsCount++;
+                                if (selectedRo.scrollMarathi) channelsCount++;
+                                if (selectedRo.audioVideoKannada) channelsCount++;
+                                if (selectedRo.audioVideoMarathi) channelsCount++;
+                                
+                                const scheduledSpots = diffDays * (selectedRo.repeatTimes || 0) * (channelsCount || 1);
+                                form.setValue('totalSpotsScheduled', scheduledSpots);
+                                form.setValue('totalSpotsAired', scheduledSpots);
+                                form.setValue('scrollKannadaDays', selectedRo.scrollKannada ? diffDays : 0);
+                                form.setValue('scrollMarathiDays', selectedRo.scrollMarathi ? diffDays : 0);
+                                form.setValue('videoKannadaDays', selectedRo.audioVideoKannada ? diffDays : 0);
+                                form.setValue('videoMarathiDays', selectedRo.audioVideoMarathi ? diffDays : 0);
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )} />

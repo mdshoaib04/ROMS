@@ -57,8 +57,8 @@ export async function initDatabase() {
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'sales',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS clients (
         id SERIAL PRIMARY KEY,
@@ -69,8 +69,8 @@ export async function initDatabase() {
         email TEXT,
         gst_number TEXT,
         notes TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS agencies (
         id SERIAL PRIMARY KEY,
@@ -80,8 +80,8 @@ export async function initDatabase() {
         phone TEXT,
         email TEXT,
         commission_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS release_orders (
         id SERIAL PRIMARY KEY,
@@ -106,15 +106,17 @@ export async function initDatabase() {
         notes TEXT,
         rejection_reason TEXT,
         stop_reason TEXT,
-        stopped_at TIMESTAMP,
+        stopped_at TIMESTAMPTZ,
         media_url TEXT,
         revision_note TEXT,
-        revision_applied_at TIMESTAMP,
-        approved_at TIMESTAMP,
+        revision_applied_at TIMESTAMPTZ,
+        approved_at TIMESTAMPTZ,
         approved_by INTEGER,
+        last_approval_reminder_sent_at TIMESTAMPTZ,
+        start_reminder_sent BOOLEAN NOT NULL DEFAULT FALSE,
         created_by INTEGER NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS playout_reports (
         id SERIAL PRIMARY KEY,
@@ -132,8 +134,8 @@ export async function initDatabase() {
         screenshot_url TEXT,
         status TEXT NOT NULL DEFAULT 'draft',
         created_by INTEGER NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS invoices (
         id SERIAL PRIMARY KEY,
@@ -155,6 +157,7 @@ export async function initDatabase() {
         video_marathi_rate NUMERIC(10,2),
         video_creative_charges NUMERIC(10,2),
         include_gst BOOLEAN NOT NULL DEFAULT TRUE,
+        focused_row_override BOOLEAN,
         cgst_percent NUMERIC(5,2) NOT NULL DEFAULT 9,
         sgst_percent NUMERIC(5,2) NOT NULL DEFAULT 9,
         subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -164,13 +167,14 @@ export async function initDatabase() {
         paid_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
         commission_amount NUMERIC(12,2),
         status TEXT NOT NULL DEFAULT 'draft',
-        sent_at TIMESTAMP,
-        approved_at TIMESTAMP,
-        paid_at TIMESTAMP,
-        last_reminder_sent_at TIMESTAMP,
+        sent_at TIMESTAMPTZ,
+        approved_at TIMESTAMPTZ,
+        paid_at TIMESTAMPTZ,
+        last_reminder_sent_at TIMESTAMPTZ,
+        invoice_date TEXT,
         created_by INTEGER NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -180,7 +184,7 @@ export async function initDatabase() {
         payment_reference TEXT,
         payment_date TEXT NOT NULL,
         notes TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
@@ -190,14 +194,14 @@ export async function initDatabase() {
         related_id INTEGER,
         related_type TEXT,
         is_read BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`,
       `CREATE TABLE IF NOT EXISTS sessions (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL UNIQUE,
         user_id INTEGER NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );`
     ];
 

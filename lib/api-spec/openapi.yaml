@@ -841,6 +841,21 @@ paths:
                 items:
                   $ref: "#/components/schemas/Invoice"
 
+  /dashboard/upcoming-release-orders:
+    get:
+      operationId: getUpcomingReleaseOrders
+      tags: [dashboard]
+      summary: Release orders starting within 7 days
+      responses:
+        "200":
+          description: Upcoming release orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UpcomingReleaseOrder"
+
   # NOTIFICATIONS
   /notifications:
     get:
@@ -1376,6 +1391,8 @@ components:
           type: integer
         playoutReportId:
           type: ["integer", "null"]
+        invoiceDate:
+          type: ["string", "null"]
         agencyId:
           type: ["integer", "null"]
         agencyName:
@@ -1449,7 +1466,7 @@ components:
 
     InvoiceInput:
       type: object
-      required: [clientId, releaseOrderId, publishFrom, publishTo]
+      required: [clientId, releaseOrderId, playoutReportId, publishFrom, publishTo]
       properties:
         clientId:
           type: integer
@@ -1457,6 +1474,8 @@ components:
           type: integer
         playoutReportId:
           type: integer
+        invoiceDate:
+          type: string
         agencyId:
           type: integer
         roReference:
@@ -1493,6 +1512,8 @@ components:
     InvoiceUpdate:
       type: object
       properties:
+        invoiceDate:
+          type: string
         scrollKannadaDays:
           type: integer
         scrollKannadaRate:
@@ -1615,7 +1636,7 @@ components:
           type: string
         type:
           type: string
-          enum: [ro_approved, ro_rejected, ro_expiring, invoice_overdue, playout_report_ready, coordinator_absent, invoice_delay, ro_pending_approval, invoice_pending_approval]
+          enum: [ro_approved, ro_rejected, ro_expiring, invoice_overdue, playout_report_ready, coordinator_absent, invoice_delay, ro_pending_approval, invoice_pending_approval, coordinator_start_reminder]
         relatedId:
           type: ["integer", "null"]
         relatedType:
@@ -1624,3 +1645,22 @@ components:
           type: boolean
         createdAt:
           type: string
+
+    UpcomingReleaseOrder:
+      type: object
+      required: [id, roNumber, clientName, publishFrom, daysAway, mediaTypes]
+      properties:
+        id:
+          type: integer
+        roNumber:
+          type: string
+        clientName:
+          type: string
+        publishFrom:
+          type: string
+        daysAway:
+          type: integer
+        mediaTypes:
+          type: array
+          items:
+            type: string

@@ -4,25 +4,30 @@ import {
   useCreateInvoice, 
   useListClients, 
   useListReleaseOrders,
-  useListPlayoutReports 
+  useListPlayoutReports,
+  useListInvoices
 } from "@workspace/api-client-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeft, Loader2, Calculator } from "lucide-react";
+import { ChevronLeft, Loader2, Calculator, CalendarIcon } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const schema = z.object({
   clientId: z.coerce.number().min(1, "Client is required"),
   releaseOrderId: z.coerce.number().min(1, "RO is required"),
-  playoutReportId: z.coerce.number().optional().nullable(),
+  playoutReportId: z.coerce.number().min(1, "Playout report is required"),
+  invoiceDate: z.date({ required_error: "Invoice date is required" }),
   publishFrom: z.string().min(1, "Required"),
   publishTo: z.string().min(1, "Required"),
   scrollKannadaDays: z.coerce.number().default(0),
@@ -48,14 +53,19 @@ export default function InvoiceNew() {
   const { data: clients } = useListClients();
   const { data: allRos } = useListReleaseOrders();
   const { data: playoutReports } = useListPlayoutReports();
+  const { data: invoices } = useListInvoices();
+  
   const ros = allRos?.filter(ro => ro.status !== 'rejected') || [];
+  const invoicedReportIds = new Set(invoices?.map(i => i.playoutReportId).filter(Boolean) || []);
+  const availableReports = playoutReports?.filter(pr => pr.status === 'submitted' && !invoicedReportIds.has(pr.id)) || [];
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
       includeGst: true,
-      publishFrom: format(new Date(), "yyyy-MM-dd"),
-      publishTo: format(new Date(), "yyyy-MM-dd"),
+      invoiceDate: new Date(),
+      publishFrom: "",
+      publishTo: "",
       scrollKannadaDays: 0,
       scrollKannadaRate: 0,
       scrollMarathiDays: 0,
@@ -85,7 +95,8 @@ export default function InvoiceNew() {
     createMut.mutate({ 
       data: {
         ...values,
-        playoutReportId: values.playoutReportId || undefined,
+        playoutReportId: values.playoutReportId,
+        invoiceDate: format(values.invoiceDate, "yyyy-MM-dd"),
         cgstPercent: values.includeGst ? 9 : 0,
         sgstPercent: values.includeGst ? 9 : 0,
       } 
@@ -141,10 +152,92 @@ export default function InvoiceNew() {
                   </Button>
                 </CardHeader>
                 <CardContent className="grid sm:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="playoutReportId" render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>Playout Report *</FormLabel>
+                      <Select 
+                        onValueChange={(v) => {
+                          const prId = Number(v);
+                          field.onChange(prId);
+                          const pr = playoutReports?.find(r => r.id === prId);
+                          if (pr) {
+                            form.setValue('releaseOrderId', pr.releaseOrderId);
+                            if (pr.publishFrom) form.setValue('publishFrom', pr.publishFrom);
+                            if (pr.publishTo) form.setValue('publishTo', pr.publishTo);
+                            
+                            const selectedRo = ros.find(r => r.id === pr.releaseOrderId);
+                            if (selectedRo) {
+                              if (selectedRo.clientId) form.setValue('clientId', selectedRo.clientId);
+                              const rateVal = selectedRo.ratePerDay ? Number(selectedRo.ratePerDay) : 0;
+                              form.setValue('scrollKannadaRate', selectedRo.scrollKannada ? rateVal : 0);
+                              form.setValue('scrollMarathiRate', selectedRo.scrollMarathi ? rateVal : 0);
+                              form.setValue('videoKannadaRate', selectedRo.audioVideoKannada ? rateVal : 0);
+                              form.setValue('videoMarathiRate', selectedRo.audioVideoMarathi ? rateVal : 0);
+                            }
+                            
+                            form.setValue('scrollKannadaDays', pr.scrollKannadaDays || 0);
+                            form.setValue('scrollMarathiDays', pr.scrollMarathiDays || 0);
+                            form.setValue('videoKannadaDays', pr.videoKannadaDays || 0);
+                            form.setValue('videoMarathiDays', pr.videoMarathiDays || 0);
+                          }
+                        }}
+                        value={field.value?.toString() || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Playout Report" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableReports.map((pr) => {
+                            const ro = ros.find(r => r.id === pr.releaseOrderId);
+                            return (
+                              <SelectItem key={pr.id} value={pr.id.toString()}>
+                                PR-{pr.id} for RO {ro?.roNumber || `RO ${pr.releaseOrderId}`} ({pr.clientName})
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <FormField control={form.control} name="invoiceDate" render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Date of Invoice *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
                   <FormField control={form.control} name="clientId" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Client *</FormLabel>
-                      <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                      <Select 
+                        disabled={!editLinkDetails}
+                        onValueChange={(v) => field.onChange(Number(v))} 
+                        value={field.value?.toString() || ""}
+                      >
                         <FormControl><SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {clients?.map((c) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
@@ -158,6 +251,7 @@ export default function InvoiceNew() {
                     <FormItem>
                       <FormLabel>Release Order *</FormLabel>
                       <Select 
+                        disabled={!editLinkDetails}
                         onValueChange={(v) => {
                           const roId = Number(v);
                           field.onChange(roId);
@@ -166,28 +260,6 @@ export default function InvoiceNew() {
                             if (selectedRo.clientId) form.setValue('clientId', selectedRo.clientId);
                             if (selectedRo.publishFrom) form.setValue('publishFrom', selectedRo.publishFrom);
                             if (selectedRo.publishTo) form.setValue('publishTo', selectedRo.publishTo);
-                            
-                            const report = playoutReports?.find(pr => pr.releaseOrderId === roId);
-                            
-                            const from = new Date(selectedRo.publishFrom);
-                            const to = new Date(selectedRo.publishTo);
-                            const diffTime = Math.abs(to.getTime() - from.getTime());
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                            
-                            if (report) {
-                              form.setValue('playoutReportId', report.id);
-                              form.setValue('scrollKannadaDays', report.scrollKannadaDays || 0);
-                              form.setValue('scrollMarathiDays', report.scrollMarathiDays || 0);
-                              form.setValue('videoKannadaDays', report.videoKannadaDays || 0);
-                              form.setValue('videoMarathiDays', report.videoMarathiDays || 0);
-                            } else {
-                              form.setValue('playoutReportId', null);
-                              form.setValue('scrollKannadaDays', selectedRo.scrollKannada ? diffDays : 0);
-                              form.setValue('scrollMarathiDays', selectedRo.scrollMarathi ? diffDays : 0);
-                              form.setValue('videoKannadaDays', selectedRo.audioVideoKannada ? diffDays : 0);
-                              form.setValue('videoMarathiDays', selectedRo.audioVideoMarathi ? diffDays : 0);
-                            }
-
                             const rateVal = selectedRo.ratePerDay ? Number(selectedRo.ratePerDay) : 0;
                             form.setValue('scrollKannadaRate', selectedRo.scrollKannada ? rateVal : 0);
                             form.setValue('scrollMarathiRate', selectedRo.scrollMarathi ? rateVal : 0);
@@ -195,7 +267,7 @@ export default function InvoiceNew() {
                             form.setValue('videoMarathiRate', selectedRo.audioVideoMarathi ? rateVal : 0);
                           }
                         }} 
-                        value={field.value?.toString()}
+                        value={field.value?.toString() || ""}
                       >
                         <FormControl><SelectTrigger><SelectValue placeholder="Select RO" /></SelectTrigger></FormControl>
                         <SelectContent>
@@ -207,16 +279,58 @@ export default function InvoiceNew() {
                   )} />
 
                   <FormField control={form.control} name="publishFrom" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Period From (YYYY-MM-DD)</FormLabel>
-                      <FormControl><Input type="date" disabled={!editLinkDetails} {...field} /></FormControl>
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Period From *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              disabled={!editLinkDetails}
+                              className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                            >
+                              {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ? new Date(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
                     </FormItem>
                   )} />
 
                   <FormField control={form.control} name="publishTo" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Period To (YYYY-MM-DD)</FormLabel>
-                      <FormControl><Input type="date" disabled={!editLinkDetails} {...field} /></FormControl>
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Period To *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              disabled={!editLinkDetails}
+                              className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                            >
+                              {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value ? new Date(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
                     </FormItem>
                   )} />
                 </CardContent>

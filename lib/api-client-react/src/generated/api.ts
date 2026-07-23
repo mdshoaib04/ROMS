@@ -51,6 +51,7 @@ import type {
   ReleaseOrderUpdate,
   RevisionInput,
   StopOrderInput,
+  UpcomingReleaseOrder,
   User,
   UserInput,
   UserUpdate
@@ -3222,6 +3223,83 @@ export function useGetPendingInvoices<TData = Awaited<ReturnType<typeof getPendi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPendingInvoicesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetUpcomingReleaseOrdersUrl = () => {
+
+
+
+
+  return `/api/dashboard/upcoming-release-orders`
+}
+
+/**
+ * @summary Release orders starting within 7 days
+ */
+export const getUpcomingReleaseOrders = async ( options?: RequestInit): Promise<UpcomingReleaseOrder[]> => {
+
+  return customFetch<UpcomingReleaseOrder[]>(getGetUpcomingReleaseOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUpcomingReleaseOrdersQueryKey = () => {
+    return [
+    `/api/dashboard/upcoming-release-orders`
+    ] as const;
+    }
+
+
+export const getGetUpcomingReleaseOrdersQueryOptions = <TData = Awaited<ReturnType<typeof getUpcomingReleaseOrders>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUpcomingReleaseOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUpcomingReleaseOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUpcomingReleaseOrders>>> = ({ signal }) => getUpcomingReleaseOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUpcomingReleaseOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUpcomingReleaseOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof getUpcomingReleaseOrders>>>
+export type GetUpcomingReleaseOrdersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Release orders starting within 7 days
+ */
+
+export function useGetUpcomingReleaseOrders<TData = Awaited<ReturnType<typeof getUpcomingReleaseOrders>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUpcomingReleaseOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUpcomingReleaseOrdersQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

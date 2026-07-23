@@ -9,7 +9,8 @@
 export interface InvoiceInput {
   clientId: number;
   releaseOrderId: number;
-  playoutReportId?: number;
+  playoutReportId: number;
+  invoiceDate?: string;
   agencyId?: number;
   roReference?: string;
   publishFrom: string;

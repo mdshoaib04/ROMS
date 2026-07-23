@@ -20,6 +20,8 @@ export interface Invoice {
   /** @nullable */
   playoutReportId?: number | null;
   /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
   agencyId?: number | null;
   /** @nullable */
   agencyName?: string | null;

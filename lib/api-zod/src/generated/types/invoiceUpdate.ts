@@ -7,6 +7,7 @@
  */
 
 export interface InvoiceUpdate {
+  invoiceDate?: string;
   scrollKannadaDays?: number;
   scrollKannadaRate?: number;
   scrollMarathiDays?: number;

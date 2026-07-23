@@ -398,6 +398,8 @@ export interface Invoice {
   /** @nullable */
   playoutReportId?: number | null;
   /** @nullable */
+  invoiceDate?: string | null;
+  /** @nullable */
   agencyId?: number | null;
   /** @nullable */
   agencyName?: string | null;
@@ -457,7 +459,8 @@ export interface Invoice {
 export interface InvoiceInput {
   clientId: number;
   releaseOrderId: number;
-  playoutReportId?: number;
+  playoutReportId: number;
+  invoiceDate?: string;
   agencyId?: number;
   roReference?: string;
   publishFrom: string;
@@ -477,6 +480,7 @@ export interface InvoiceInput {
 }
 
 export interface InvoiceUpdate {
+  invoiceDate?: string;
   scrollKannadaDays?: number;
   scrollKannadaRate?: number;
   scrollMarathiDays?: number;
@@ -568,6 +572,7 @@ export const NotificationType = {
   invoice_delay: 'invoice_delay',
   ro_pending_approval: 'ro_pending_approval',
   invoice_pending_approval: 'invoice_pending_approval',
+  coordinator_start_reminder: 'coordinator_start_reminder',
 } as const;
 
 export interface Notification {
@@ -580,6 +585,15 @@ export interface Notification {
   relatedType?: string | null;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface UpcomingReleaseOrder {
+  id: number;
+  roNumber: string;
+  clientName: string;
+  publishFrom: string;
+  daysAway: number;
+  mediaTypes: string[];
 }
 
 export type ListClientsParams = {

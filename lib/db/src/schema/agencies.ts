@@ -12,8 +12,8 @@ export const agenciesTable = pgTable("agencies", {
   phone: text("phone"),
   email: text("email"),
   commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertAgencySchema = createInsertSchema(agenciesTable).omit({ id: true, createdAt: true, updatedAt: true });

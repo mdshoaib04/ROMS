@@ -20,8 +20,8 @@ export const playoutReportsTable = pgTable("playout_reports", {
   screenshotUrl: text("screenshot_url"),
   status: playoutReportStatusEnum("status").notNull().default("draft"),
   createdBy: integer("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertPlayoutReportSchema = createInsertSchema(playoutReportsTable).omit({

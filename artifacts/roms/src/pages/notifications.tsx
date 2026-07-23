@@ -6,8 +6,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 
+import { useState, useEffect } from "react";
+
+function RelativeTime({ date }: { date: Date }) {
+  const [timeAgo, setTimeAgo] = useState(() => formatDistanceToNow(date, { addSuffix: true }));
+
+  useEffect(() => {
+    setTimeAgo(formatDistanceToNow(date, { addSuffix: true }));
+    const interval = setInterval(() => {
+      setTimeAgo(formatDistanceToNow(date, { addSuffix: true }));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [date]);
+
+  return <span>{timeAgo}</span>;
+}
+
 export default function Notifications() {
-  const { data: notifications, isLoading } = useListNotifications();
+  const { data: notifications, isLoading } = useListNotifications(undefined, { query: { refetchInterval: 30000 } as any });
   const readMut = useMarkNotificationRead();
   const queryClient = useQueryClient();
 
@@ -79,7 +95,7 @@ export default function Notifications() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
+                    <RelativeTime date={new Date(notif.createdAt)} />
                   </p>
                 </div>
                 {!notif.isRead && (

@@ -6,7 +6,7 @@ import {
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { syncAllReleaseOrders } from "../lib/roSync";
-import { runManagementOnDemandChecks, runPaymentReminderEmails } from "../lib/onDemandChecks";
+import { runManagementOnDemandChecks, runCoordinatorOnDemandChecks, runPaymentReminderEmails } from "../lib/onDemandChecks";
 
 const router = Router();
 
@@ -15,6 +15,9 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
   if (req.user) {
     if (req.user.role === "management") {
       await runManagementOnDemandChecks(db);
+    }
+    if (req.user.role === "coordinator") {
+      await runCoordinatorOnDemandChecks(db);
     }
     if (req.user.role === "management" || req.user.role === "operations") {
       await runPaymentReminderEmails(db);
@@ -174,6 +177,51 @@ router.get("/dashboard/pending-invoices", requireAuth, async (req, res) => {
       paidAt: i.paidAt?.toISOString() || null,
       createdAt: i.createdAt.toISOString(),
       updatedAt: i.updatedAt.toISOString(),
+    };
+  }));
+});
+
+router.get("/dashboard/upcoming-release-orders", requireAuth, async (req, res) => {
+  if (!req.user || !["management", "coordinator"].includes(req.user.role)) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+  await syncAllReleaseOrders(db);
+  const now = new Date();
+  const nowStr = now.toISOString().split("T")[0];
+  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysStr = sevenDaysLater.toISOString().split("T")[0];
+
+  const ros = await db.query.releaseOrdersTable.findMany({
+    where: eq(releaseOrdersTable.status, "approved"),
+  });
+  
+  const upcoming = ros.filter((r: any) => r.publishFrom >= nowStr && r.publishFrom <= sevenDaysStr);
+
+  const clientIds = [...new Set(upcoming.map((r: any) => r.clientId))];
+  const clients = clientIds.length
+    ? await db.query.clientsTable.findMany({ where: (c: any, { inArray }: any) => inArray(c.id, clientIds) })
+    : [];
+  const clientMap = Object.fromEntries(clients.map((c: any) => [c.id, c.name]));
+
+  res.json(upcoming.map((r: any) => {
+    const fromDate = new Date(r.publishFrom + "T00:00:00");
+    const diffTime = fromDate.getTime() - new Date(nowStr + "T00:00:00").getTime();
+    const daysAway = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    
+    const mediaTypes: string[] = [];
+    if (r.scrollKannada) mediaTypes.push("Scroll Kannada");
+    if (r.scrollMarathi) mediaTypes.push("Scroll Marathi");
+    if (r.audioVideoKannada) mediaTypes.push("Video Kannada");
+    if (r.audioVideoMarathi) mediaTypes.push("Video Marathi");
+
+    return {
+      id: r.id,
+      roNumber: r.roNumber,
+      clientName: clientMap[r.clientId] || "Unknown",
+      publishFrom: r.publishFrom,
+      daysAway,
+      mediaTypes,
     };
   }));
 });

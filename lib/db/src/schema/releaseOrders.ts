@@ -35,15 +35,17 @@ export const releaseOrdersTable = pgTable("release_orders", {
   notes: text("notes"),
   rejectionReason: text("rejection_reason"),
   stopReason: text("stop_reason"),
-  stoppedAt: timestamp("stopped_at"),
+  stoppedAt: timestamp("stopped_at", { withTimezone: true }),
   mediaUrl: text("media_url"),
   revisionNote: text("revision_note"),
-  revisionAppliedAt: timestamp("revision_applied_at"),
-  approvedAt: timestamp("approved_at"),
+  revisionAppliedAt: timestamp("revision_applied_at", { withTimezone: true }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   approvedBy: integer("approved_by"),
+  lastApprovalReminderSentAt: timestamp("last_approval_reminder_sent_at", { withTimezone: true }),
+  startReminderSent: boolean("start_reminder_sent").notNull().default(false),
   createdBy: integer("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertReleaseOrderSchema = createInsertSchema(releaseOrdersTable).omit({
