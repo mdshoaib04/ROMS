@@ -1,6 +1,6 @@
 import { pgTable, serial, text, boolean, integer, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const roStatusEnum = pgEnum("ro_status", [
   "draft",
@@ -17,7 +17,7 @@ export const releaseOrdersTable = pgTable("release_orders", {
   roNumber: text("ro_number").notNull().unique(),
   clientId: integer("client_id").notNull(),
   agencyId: integer("agency_id"),
-  status: roStatusEnum("status").notNull().default("draft"),
+  status: roStatusEnum("status").notNull().default("pending_approval"),
   roDate: text("ro_date"),
   clientRoReference: text("client_ro_reference"),
   publishFrom: text("publish_from").notNull(),
@@ -29,7 +29,7 @@ export const releaseOrdersTable = pgTable("release_orders", {
   repeatTimes: integer("repeat_times"),
   spotType: text("spot_type"),
   spotDuration: text("spot_duration"),
-  ratePerSpot: numeric("rate_per_spot", { precision: 10, scale: 2 }),
+  ratePerDay: numeric("rate_per_day", { precision: 10, scale: 2 }),
   bonusSpots: integer("bonus_spots"),
   mediaDesignRequired: boolean("media_design_required").notNull().default(false),
   notes: text("notes"),
@@ -52,5 +52,5 @@ export const insertReleaseOrderSchema = createInsertSchema(releaseOrdersTable).o
   createdAt: true,
   updatedAt: true,
 });
-export type InsertReleaseOrder = z.infer<typeof insertReleaseOrderSchema>;
+export type InsertReleaseOrder = typeof releaseOrdersTable.$inferInsert;
 export type ReleaseOrder = typeof releaseOrdersTable.$inferSelect;

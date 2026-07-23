@@ -1,14 +1,16 @@
 import { useGetClient, getGetClientQueryKey } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { ChevronLeft, MapPin, Phone, Mail, FileText, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function ClientDetail({ id }: { id: string }) {
-  const clientId = parseInt(id);
+export default function ClientDetail({ id: propId }: { id?: string }) {
+  const params = useParams<{ id: string }>();
+  const idStr = params?.id || propId;
+  const clientId = idStr ? parseInt(idStr, 10) : 0;
   const { data: client, isLoading } = useGetClient(clientId, {
-    query: { enabled: !!clientId, queryKey: getGetClientQueryKey(clientId) }
+    query: { enabled: !!clientId && !isNaN(clientId), queryKey: getGetClientQueryKey(clientId) }
   });
 
   if (isLoading || !client) return <div className="p-8 animate-pulse text-center">Loading client...</div>;

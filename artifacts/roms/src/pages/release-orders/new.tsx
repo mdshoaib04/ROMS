@@ -36,7 +36,7 @@ const formSchema = z.object({
   repeatTimes: z.coerce.number().min(1).default(1),
   spotType: z.string().optional(),
   spotDuration: z.string().optional(),
-  ratePerSpot: z.coerce.number().optional(),
+  ratePerDay: z.coerce.number().optional(),
   bonusSpots: z.coerce.number().default(0),
   mediaDesignRequired: z.boolean().default(false),
   mediaUrl: z.string().url().optional().or(z.literal('')),
@@ -339,9 +339,9 @@ export default function ReleaseOrderNew() {
                         <FormControl><Input type="number" {...field} className="bg-background" /></FormControl>
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="ratePerSpot" render={({ field }) => (
+                    <FormField control={form.control} name="ratePerDay" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rate (₹)</FormLabel>
+                        <FormLabel>Rate Per Day (₹)</FormLabel>
                         <FormControl><Input type="number" {...field} className="bg-background" /></FormControl>
                       </FormItem>
                     )} />

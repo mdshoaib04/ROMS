@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, numeric, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
   "draft",
@@ -54,5 +54,5 @@ export const insertInvoiceSchema = createInsertSchema(invoicesTable).omit({
   createdAt: true,
   updatedAt: true,
 });
-export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type InsertInvoice = typeof invoicesTable.$inferInsert;
 export type Invoice = typeof invoicesTable.$inferSelect;

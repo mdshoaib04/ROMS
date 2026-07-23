@@ -1126,7 +1126,7 @@ components:
         spotDuration:
           type: ["string", "null"]
           description: "15s, 30s, L-band, aston"
-        ratePerSpot:
+        ratePerDay:
           type: ["number", "null"]
         bonusSpots:
           type: ["integer", "null"]
@@ -1187,7 +1187,7 @@ components:
           type: string
         spotDuration:
           type: string
-        ratePerSpot:
+        ratePerDay:
           type: number
         bonusSpots:
           type: integer
@@ -1225,7 +1225,7 @@ components:
           type: string
         spotDuration:
           type: string
-        ratePerSpot:
+        ratePerDay:
           type: number
         bonusSpots:
           type: integer
@@ -1609,7 +1609,7 @@ components:
           type: string
         type:
           type: string
-          enum: [ro_approved, ro_rejected, ro_expiring, invoice_overdue, playout_report_ready, coordinator_absent, invoice_delay]
+          enum: [ro_approved, ro_rejected, ro_expiring, invoice_overdue, playout_report_ready, coordinator_absent, invoice_delay, ro_pending_approval, invoice_pending_approval]
         relatedId:
           type: ["integer", "null"]
         relatedType:

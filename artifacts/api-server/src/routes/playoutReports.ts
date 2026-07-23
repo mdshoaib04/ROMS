@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { playoutReportsTable, releaseOrdersTable, clientsTable, usersTable } from "@workspace/db";
+import { playoutReportsTable, releaseOrdersTable, clientsTable, usersTable, notificationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth";
 
@@ -18,16 +18,16 @@ function toReport(r: any, roNumber: string, clientName: string) {
 router.get("/playout-reports", requireAuth, async (req, res) => {
   const { releaseOrderId, month } = req.query;
   const reports = await db.query.playoutReportsTable.findMany({
-    orderBy: (r, { desc }) => [desc(r.createdAt)],
+    orderBy: (r: any, { desc }: any) => [desc(r.createdAt)],
   });
 
   let filtered = reports;
-  if (releaseOrderId) filtered = filtered.filter(r => r.releaseOrderId === Number(releaseOrderId));
+  if (releaseOrderId) filtered = filtered.filter((r: any) => r.releaseOrderId === Number(releaseOrderId));
   if (month && typeof month === "string") {
-    filtered = filtered.filter(r => r.reportDate?.startsWith(month));
+    filtered = filtered.filter((r: any) => r.reportDate?.startsWith(month));
   }
 
-  const roIds = [...new Set(filtered.map(r => r.releaseOrderId))];
+  const roIds = [...new Set(filtered.map((r: any) => r.releaseOrderId))];
   const ros = roIds.length
     ? await db.query.releaseOrdersTable.findMany({ where: (ro: any, { inArray }: any) => inArray(ro.id, roIds) })
     : [];
@@ -39,7 +39,7 @@ router.get("/playout-reports", requireAuth, async (req, res) => {
   const roMap = Object.fromEntries(ros.map((r: any) => [r.id, r]));
   const clientMap = Object.fromEntries(clients.map((c: any) => [c.id, c.name]));
 
-  res.json(filtered.map(r => toReport(r, roMap[r.releaseOrderId]?.roNumber || "", clientMap[roMap[r.releaseOrderId]?.clientId] || "")));
+  res.json(filtered.map((r: any) => toReport(r, roMap[r.releaseOrderId]?.roNumber || "", clientMap[roMap[r.releaseOrderId]?.clientId] || "")));
 });
 
 router.post("/playout-reports", requireAuth, requireRole("coordinator"), async (req, res) => {
@@ -63,6 +63,20 @@ router.post("/playout-reports", requireAuth, requireRole("coordinator"), async (
 
   const ro = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, releaseOrderId) });
   const client = ro ? await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) }) : null;
+
+  // Trigger playout report ready notification
+  const recipients = await db.query.usersTable.findMany({
+    where: (u: any, { inArray }: any) => inArray(u.role, ["operations", "management"]),
+  });
+  for (const recipient of recipients) {
+    await db.insert(notificationsTable).values({
+      userId: recipient.id,
+      message: `Playout report is ready for RO ${ro?.roNumber || ""}`,
+      type: "playout_report_ready",
+      relatedId: report.id,
+      relatedType: "playout_report",
+    });
+  }
 
   res.status(201).json(toReport(report, ro?.roNumber || "", client?.name || ""));
 });

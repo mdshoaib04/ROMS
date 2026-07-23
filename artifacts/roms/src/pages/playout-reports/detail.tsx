@@ -1,15 +1,17 @@
 import { useGetPlayoutReport, getGetPlayoutReportQueryKey } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { format } from "date-fns";
 import { ChevronLeft, FileSpreadsheet, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-export default function PlayoutReportDetail({ id }: { id: string }) {
-  const reportId = parseInt(id);
+export default function PlayoutReportDetail({ id: propId }: { id?: string }) {
+  const params = useParams<{ id: string }>();
+  const idStr = params?.id || propId;
+  const reportId = idStr ? parseInt(idStr, 10) : 0;
   const { data: report, isLoading } = useGetPlayoutReport(reportId, {
-    query: { enabled: !!reportId, queryKey: getGetPlayoutReportQueryKey(reportId) }
+    query: { enabled: !!reportId && !isNaN(reportId), queryKey: getGetPlayoutReportQueryKey(reportId) }
   });
 
   if (isLoading || !report) return <div className="p-8 animate-pulse text-center">Loading report...</div>;

@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const playoutReportStatusEnum = pgEnum("playout_report_status", ["draft", "submitted", "invoiced"]);
 
@@ -29,5 +29,5 @@ export const insertPlayoutReportSchema = createInsertSchema(playoutReportsTable)
   createdAt: true,
   updatedAt: true,
 });
-export type InsertPlayoutReport = z.infer<typeof insertPlayoutReportSchema>;
+export type InsertPlayoutReport = typeof playoutReportsTable.$inferInsert;
 export type PlayoutReport = typeof playoutReportsTable.$inferSelect;

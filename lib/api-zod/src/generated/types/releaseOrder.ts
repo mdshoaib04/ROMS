@@ -40,7 +40,7 @@ export interface ReleaseOrder {
      */
   spotDuration?: string | null;
   /** @nullable */
-  ratePerSpot?: number | null;
+  ratePerDay?: number | null;
   /** @nullable */
   bonusSpots?: number | null;
   mediaDesignRequired?: boolean;

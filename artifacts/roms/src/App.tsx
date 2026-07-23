@@ -44,19 +44,19 @@ function Router() {
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       
       <Route path="/release-orders/new" component={() => <ProtectedRoute component={ReleaseOrderNew} />} />
-      <Route path="/release-orders/:id" component={(params) => <ProtectedRoute component={ReleaseOrderDetail} id={params.id} />} />
+      <Route path="/release-orders/:id" component={(params: any) => <ProtectedRoute component={ReleaseOrderDetail} id={params?.id || params?.params?.id} />} />
       <Route path="/release-orders" component={() => <ProtectedRoute component={ReleaseOrders} />} />
       
       <Route path="/clients/new" component={() => <ProtectedRoute component={ClientNew} />} />
-      <Route path="/clients/:id" component={(params) => <ProtectedRoute component={ClientDetail} id={params.id} />} />
+      <Route path="/clients/:id" component={(params: any) => <ProtectedRoute component={ClientDetail} id={params?.id || params?.params?.id} />} />
       <Route path="/clients" component={() => <ProtectedRoute component={Clients} />} />
       
       <Route path="/playout-reports/new" component={() => <ProtectedRoute component={PlayoutReportNew} />} />
-      <Route path="/playout-reports/:id" component={(params) => <ProtectedRoute component={PlayoutReportDetail} id={params.id} />} />
+      <Route path="/playout-reports/:id" component={(params: any) => <ProtectedRoute component={PlayoutReportDetail} id={params?.id || params?.params?.id} />} />
       <Route path="/playout-reports" component={() => <ProtectedRoute component={PlayoutReports} />} />
       
       <Route path="/invoices/new" component={() => <ProtectedRoute component={InvoiceNew} />} />
-      <Route path="/invoices/:id" component={(params) => <ProtectedRoute component={InvoiceDetail} id={params.id} />} />
+      <Route path="/invoices/:id" component={(params: any) => <ProtectedRoute component={InvoiceDetail} id={params?.id || params?.params?.id} />} />
       <Route path="/invoices" component={() => <ProtectedRoute component={Invoices} />} />
       
       <Route path="/payments" component={() => <ProtectedRoute component={Payments} />} />

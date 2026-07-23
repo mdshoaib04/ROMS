@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const paymentModeEnum = pgEnum("payment_mode", ["upi", "cheque", "bank_transfer", "cash"]);
 
@@ -16,5 +16,5 @@ export const paymentsTable = pgTable("payments", {
 });
 
 export const insertPaymentSchema = createInsertSchema(paymentsTable).omit({ id: true, createdAt: true });
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertPayment = typeof paymentsTable.$inferInsert;
 export type Payment = typeof paymentsTable.$inferSelect;

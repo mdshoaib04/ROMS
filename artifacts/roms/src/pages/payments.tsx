@@ -32,7 +32,7 @@ export default function Payments() {
   const queryClient = useQueryClient();
 
   const { data: payments, isLoading } = useListPayments();
-  const { data: invoices } = useListInvoices({ status: "sent" }); // Or partially_paid
+  const { data: invoices } = useListInvoices();
   const recordMut = useRecordPayment();
 
   const form = useForm<z.infer<typeof paymentSchema>>({
@@ -43,6 +43,8 @@ export default function Payments() {
     }
   });
 
+  const selectedMode = form.watch("paymentMode");
+
   const onSubmit = (values: z.infer<typeof paymentSchema>) => {
     recordMut.mutate({ data: values }, {
       onSuccess: () => {
@@ -51,7 +53,23 @@ export default function Payments() {
         form.reset();
         queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
         queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      },
+      onError: (err: any) => {
+        toast({ 
+          title: "Failed to Record Payment", 
+          description: err?.data?.error || err?.message || "An error occurred while saving the payment.", 
+          variant: "destructive" 
+        });
       }
+    });
+  };
+
+  const onInvalid = (errors: any) => {
+    const firstErr = Object.values(errors)[0] as any;
+    toast({ 
+      title: "Validation Error", 
+      description: firstErr?.message || "Please check the form inputs.", 
+      variant: "destructive" 
     });
   };
 
@@ -80,14 +98,14 @@ export default function Payments() {
               <DialogTitle>Record New Payment</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+              <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 pt-4">
                 <FormField control={form.control} name="invoiceId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Apply to Invoice</FormLabel>
                     <Select onValueChange={v => field.onChange(Number(v))} value={field.value?.toString()}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select pending invoice" /></SelectTrigger></FormControl>
+                       <FormControl><SelectTrigger><SelectValue placeholder="Select pending invoice" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {invoices?.filter(i => ['sent', 'partially_paid', 'approved'].includes(i.status)).map(i => (
+                        {invoices?.filter(i => i.status !== 'paid' && i.status !== 'draft').map(i => (
                           <SelectItem key={i.id} value={i.id.toString()}>
                             {i.invoiceNumber} - {i.clientName} (Due: ₹{i.dueAmount?.toLocaleString()})
                           </SelectItem>
@@ -131,13 +149,28 @@ export default function Payments() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="paymentReference" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ref No. / UTR</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                  {selectedMode !== "cash" && (
+                    <FormField control={form.control} name="paymentReference" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {selectedMode === "upi" && "UTR Number"}
+                          {selectedMode === "cheque" && "Cheque Number"}
+                          {selectedMode === "bank_transfer" && "Transaction Reference (NEFT/RTGS/IMPS No.)"}
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder={
+                              selectedMode === "upi" ? "Enter UTR number" :
+                              selectedMode === "cheque" ? "Enter cheque number" :
+                              selectedMode === "bank_transfer" ? "Enter transaction reference" : ""
+                            }
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
                 </div>
 
                 <FormField control={form.control} name="notes" render={({ field }) => (

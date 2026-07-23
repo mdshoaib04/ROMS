@@ -17,4 +17,6 @@ export const NotificationType = {
   playout_report_ready: 'playout_report_ready',
   coordinator_absent: 'coordinator_absent',
   invoice_delay: 'invoice_delay',
+  ro_pending_approval: 'ro_pending_approval',
+  invoice_pending_approval: 'invoice_pending_approval',
 } as const;

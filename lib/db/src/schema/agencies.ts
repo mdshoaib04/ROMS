@@ -1,6 +1,6 @@
 import { pgTable, serial, text, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const agencyTypeEnum = pgEnum("agency_type", ["agency", "freelancer"]);
 
@@ -17,5 +17,5 @@ export const agenciesTable = pgTable("agencies", {
 });
 
 export const insertAgencySchema = createInsertSchema(agenciesTable).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertAgency = z.infer<typeof insertAgencySchema>;
+export type InsertAgency = typeof agenciesTable.$inferInsert;
 export type Agency = typeof agenciesTable.$inferSelect;

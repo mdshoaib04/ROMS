@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp, mkdir } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -28,6 +28,8 @@ async function buildAll() {
     // - uses native modules and loads them dynamically (e.g. sharp)
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
+      "@electric-sql/pglite",
+      "@electric-sql/*",
       "*.node",
       "sharp",
       "better-sqlite3",
@@ -59,7 +61,6 @@ async function buildAll() {
       "@prisma/client",
       "@mikro-orm/*",
       "@grpc/*",
-      "@swc/*",
       "@aws-sdk/*",
       "@azure/*",
       "@opentelemetry/*",
@@ -118,6 +119,12 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Copy pdfkit's AFM font metric data files to dist/data
+  const sourceDir = path.resolve(artifactDir, "node_modules/pdfkit/js/data");
+  const destDir = path.resolve(distDir, "data");
+  await mkdir(destDir, { recursive: true });
+  await cp(sourceDir, destDir, { recursive: true });
 }
 
 buildAll().catch((err) => {

@@ -1,16 +1,56 @@
-import { useGetInvoice, getGetInvoiceQueryKey } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { 
+  useGetInvoice, 
+  getGetInvoiceQueryKey,
+  useApproveInvoice,
+  useSendInvoice
+} from "@workspace/api-client-react";
+import { Link, useParams } from "wouter";
 import { format } from "date-fns";
-import { ChevronLeft, Printer, Download, Mail } from "lucide-react";
+import { ChevronLeft, Printer, Check, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
-export default function InvoiceDetail({ id }: { id: string }) {
-  const invoiceId = parseInt(id);
+export default function InvoiceDetail({ id: propId }: { id?: string }) {
+  const params = useParams<{ id: string }>();
+  const idStr = params?.id || propId;
+  const invoiceId = idStr ? parseInt(idStr, 10) : 0;
   const { data: invoice, isLoading } = useGetInvoice(invoiceId, {
-    query: { enabled: !!invoiceId, queryKey: getGetInvoiceQueryKey(invoiceId) }
+    query: { enabled: !!invoiceId && !isNaN(invoiceId), queryKey: getGetInvoiceQueryKey(invoiceId) }
   });
+  const { user } = useAuth();
+  const role = user?.role;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const approveMut = useApproveInvoice();
+  const sendMut = useSendInvoice();
+
+  const handleApprove = () => {
+    approveMut.mutate({ id: invoiceId } as any, {
+      onSuccess: () => {
+        toast({ title: "Invoice Approved", description: "Invoice status updated to approved." });
+        queryClient.invalidateQueries({ queryKey: getGetInvoiceQueryKey(invoiceId) });
+      },
+      onError: (err: any) => {
+        toast({ title: "Failed to Approve", description: err.message || "Something went wrong.", variant: "destructive" });
+      }
+    });
+  };
+
+  const handleSend = () => {
+    sendMut.mutate({ id: invoiceId } as any, {
+      onSuccess: () => {
+        toast({ title: "Invoice Sent", description: "Invoice status updated to sent, and PDF email was sent to client." });
+        queryClient.invalidateQueries({ queryKey: getGetInvoiceQueryKey(invoiceId) });
+      },
+      onError: (err: any) => {
+        toast({ title: "Failed to Send", description: err.message || "SMTP mail or PDF compilation failed.", variant: "destructive" });
+      }
+    });
+  };
 
   const handlePrint = () => window.print();
 
@@ -32,10 +72,47 @@ export default function InvoiceDetail({ id }: { id: string }) {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Invoice {invoice.invoiceNumber}</h1>
-            <Badge variant="outline" className="mt-1">{invoice.status}</Badge>
+            <Badge 
+              variant="outline" 
+              className={`mt-1 font-semibold uppercase ${
+                invoice.status === "paid" ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-50" :
+                invoice.status === "partially_paid" ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-50" :
+                invoice.status === "sent" ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-50" :
+                invoice.status === "approved" ? "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-50" :
+                "bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              {invoice.status}
+            </Badge>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {invoice.status === "draft" && (
+            role === "management" ? (
+              <Button onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700" disabled={approveMut.isPending}>
+                {approveMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Approve Invoice
+              </Button>
+            ) : (
+              <Button disabled variant="outline">
+                Awaiting Approval
+              </Button>
+            )
+          )}
+
+          {invoice.status === "approved" && (
+            role === "operations" ? (
+              <Button onClick={handleSend} className="bg-blue-600 hover:bg-blue-700" disabled={sendMut.isPending}>
+                {sendMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Send to Client
+              </Button>
+            ) : (
+              <Button disabled variant="outline">
+                Approved (Awaiting Send)
+              </Button>
+            )
+          )}
+
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>

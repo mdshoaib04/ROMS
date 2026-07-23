@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 export const notificationTypeEnum = pgEnum("notification_type", [
   "ro_approved",
@@ -10,6 +10,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "playout_report_ready",
   "coordinator_absent",
   "invoice_delay",
+  "ro_pending_approval",
+  "invoice_pending_approval",
 ]);
 
 export const notificationsTable = pgTable("notifications", {
@@ -24,5 +26,5 @@ export const notificationsTable = pgTable("notifications", {
 });
 
 export const insertNotificationSchema = createInsertSchema(notificationsTable).omit({ id: true, createdAt: true });
-export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertNotification = typeof notificationsTable.$inferInsert;
 export type Notification = typeof notificationsTable.$inferSelect;

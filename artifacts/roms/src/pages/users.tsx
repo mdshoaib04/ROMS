@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useListUsers, useCreateUser, useUpdateUser } from "@workspace/api-client-react";
+import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, login } from "@workspace/api-client-react";
 import { format } from "date-fns";
-import { Plus, UserCog, Loader2 } from "lucide-react";
+import { Plus, UserCog, Loader2, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,16 +29,73 @@ const userSchema = z.object({
 });
 
 export default function Users() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [confirmUsername, setConfirmUsername] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Only management can view this
   if (role && role !== 'management') return <Redirect to="/dashboard" />;
 
   const { data: users, isLoading } = useListUsers();
   const createMut = useCreateUser();
+  const deleteMut = useDeleteUser();
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    
+    if (confirmUsername !== user?.username) {
+      toast({
+        title: "Verification Failed",
+        description: "Identity verification failed. The entered username does not match your currently logged-in account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      // Re-verify identity by logging in with username and password
+      await login({ username: confirmUsername, password: confirmPassword });
+      
+      // Verification succeeded. Proceed with user deletion.
+      deleteMut.mutate({ id: userToDelete.id }, {
+        onSuccess: () => {
+          toast({
+            title: "User Deleted",
+            description: `The user account for "${userToDelete.name}" has been permanently deleted.`
+          });
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+          setConfirmUsername("");
+          setConfirmPassword("");
+          queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Deletion Failed",
+            description: err.message || "An error occurred while deleting the user.",
+            variant: "destructive",
+          });
+        }
+      });
+    } catch (err: any) {
+      console.error("Re-authentication failed:", err);
+      toast({
+        title: "Verification Failed",
+        description: "Identity verification failed. Invalid password.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
@@ -151,6 +208,7 @@ export default function Users() {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead className="text-right no-print">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -162,6 +220,7 @@ export default function Users() {
                     <TableCell><div className="h-6 w-24 bg-muted animate-pulse rounded-full"></div></TableCell>
                     <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded"></div></TableCell>
                     <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded"></div></TableCell>
+                    <TableCell><div className="h-9 w-9 bg-muted animate-pulse rounded ml-auto"></div></TableCell>
                   </TableRow>
                 ))
               ) : (
@@ -181,6 +240,23 @@ export default function Users() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{format(new Date(u.createdAt), "dd MMM yyyy")}</TableCell>
+                    <TableCell className="text-right no-print">
+                      {u.id !== user?.id && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setUserToDelete(u);
+                            setConfirmUsername(user?.username || "");
+                            setConfirmPassword("");
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -188,6 +264,59 @@ export default function Users() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm User Deletion</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              You are about to permanently delete the account of <strong>{userToDelete?.name}</strong> ({userToDelete?.username}).
+            </p>
+            <p className="text-sm font-semibold text-destructive">
+              This action cannot be undone. To confirm your identity, please enter YOUR own username and password.
+            </p>
+            
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Your Username</label>
+                <Input 
+                  value={confirmUsername} 
+                  onChange={(e) => setConfirmUsername(e.target.value)} 
+                  placeholder="Enter your username"
+                  autoComplete="username"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Your Password</label>
+                <Input 
+                  type="password" 
+                  value={confirmPassword} 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleConfirmDelete} 
+                disabled={!confirmUsername || !confirmPassword || isVerifying || deleteMut.isPending}
+              >
+                {(isVerifying || deleteMut.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Verify & Delete User
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

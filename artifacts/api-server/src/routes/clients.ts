@@ -12,10 +12,10 @@ router.get("/clients", requireAuth, async (req, res) => {
   if (search && typeof search === "string") {
     clients = await db.query.clientsTable.findMany({
       where: or(ilike(clientsTable.name, `%${search}%`), ilike(clientsTable.phone, `%${search}%`)),
-      orderBy: (c, { asc }) => [asc(c.name)],
+      orderBy: (c: any, { asc }: any) => [asc(c.name)],
     });
   } else {
-    clients = await db.query.clientsTable.findMany({ orderBy: (c, { asc }) => [asc(c.name)] });
+    clients = await db.query.clientsTable.findMany({ orderBy: (c: any, { asc }: any) => [asc(c.name)] });
   }
   res.json(clients);
 });

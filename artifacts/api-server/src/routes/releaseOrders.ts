@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { releaseOrdersTable, clientsTable, agenciesTable, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, ilike, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth";
+import { syncAllReleaseOrders } from "../lib/roSync";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ function toRO(ro: any, clientName: string, agencyName?: string | null) {
     ...ro,
     clientName,
     agencyName: agencyName || null,
-    ratePerSpot: ro.ratePerSpot ? Number(ro.ratePerSpot) : null,
+    ratePerDay: ro.ratePerDay ? Number(ro.ratePerDay) : null,
     stoppedAt: ro.stoppedAt?.toISOString() || null,
     revisionAppliedAt: ro.revisionAppliedAt?.toISOString() || null,
     approvedAt: ro.approvedAt?.toISOString() || null,
@@ -39,19 +40,20 @@ async function notifyManagement(db: any, message: string, type: string, relatedI
 
 router.get("/release-orders", requireAuth, async (req, res) => {
   const { status, clientId, month } = req.query;
+  await syncAllReleaseOrders(db);
   const ros = await db.query.releaseOrdersTable.findMany({
-    orderBy: (r, { desc }) => [desc(r.createdAt)],
+    orderBy: (r: any, { desc }: any) => [desc(r.createdAt)],
   });
 
   let filtered = ros;
-  if (status) filtered = filtered.filter(r => r.status === status);
-  if (clientId) filtered = filtered.filter(r => r.clientId === Number(clientId));
+  if (status) filtered = filtered.filter((r: any) => r.status === status);
+  if (clientId) filtered = filtered.filter((r: any) => r.clientId === Number(clientId));
   if (month && typeof month === "string") {
-    filtered = filtered.filter(r => r.publishFrom?.startsWith(month) || r.publishTo?.startsWith(month));
+    filtered = filtered.filter((r: any) => r.publishFrom?.startsWith(month) || r.publishTo?.startsWith(month));
   }
 
-  const clientIds = [...new Set(filtered.map(r => r.clientId))];
-  const agencyIds = [...new Set(filtered.map(r => r.agencyId).filter(Boolean))] as number[];
+  const clientIds = [...new Set(filtered.map((r: any) => r.clientId))];
+  const agencyIds = [...new Set(filtered.map((r: any) => r.agencyId).filter(Boolean))] as number[];
 
   const clients = clientIds.length
     ? await db.query.clientsTable.findMany({ where: (c: any, { inArray }: any) => inArray(c.id, clientIds) })
@@ -63,13 +65,13 @@ router.get("/release-orders", requireAuth, async (req, res) => {
   const clientMap = Object.fromEntries(clients.map((c: any) => [c.id, c.name]));
   const agencyMap = Object.fromEntries(agencies.map((a: any) => [a.id, a.name]));
 
-  res.json(filtered.map(r => toRO(r, clientMap[r.clientId] || "Unknown", r.agencyId ? agencyMap[r.agencyId] : null)));
+  res.json(filtered.map((r: any) => toRO(r, clientMap[r.clientId] || "Unknown", r.agencyId ? agencyMap[r.agencyId] : null)));
 });
 
 router.post("/release-orders", requireAuth, async (req, res) => {
   const { clientId, agencyId, roDate, clientRoReference, publishFrom, publishTo,
     scrollKannada, scrollMarathi, audioVideoKannada, audioVideoMarathi,
-    repeatTimes, spotType, spotDuration, ratePerSpot, bonusSpots,
+    repeatTimes, spotType, spotDuration, ratePerDay, bonusSpots,
     mediaDesignRequired, notes, mediaUrl } = req.body;
 
   if (!clientId || !publishFrom || !publishTo) {
@@ -79,15 +81,23 @@ router.post("/release-orders", requireAuth, async (req, res) => {
 
   const roNumber = await generateRoNumber();
   const [ro] = await db.insert(releaseOrdersTable).values({
-    roNumber, clientId, agencyId, status: "draft", roDate, clientRoReference,
+    roNumber, clientId, agencyId, status: "pending_approval", roDate, clientRoReference,
     publishFrom, publishTo,
     scrollKannada: !!scrollKannada, scrollMarathi: !!scrollMarathi,
     audioVideoKannada: !!audioVideoKannada, audioVideoMarathi: !!audioVideoMarathi,
     repeatTimes, spotType, spotDuration,
-    ratePerSpot: ratePerSpot ? String(ratePerSpot) : null,
+    ratePerDay: ratePerDay ? String(ratePerDay) : null,
     bonusSpots, mediaDesignRequired: !!mediaDesignRequired, notes, mediaUrl,
     createdBy: req.user!.id,
   }).returning();
+
+  // Notify management that a new RO needs approval
+  await notifyManagement(
+    db,
+    `New Release Order ${roNumber} requires approval`,
+    "ro_pending_approval",
+    ro.id
+  );
 
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, clientId) });
   const agency = agencyId ? await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, agencyId) }) : null;
@@ -96,6 +106,7 @@ router.post("/release-orders", requireAuth, async (req, res) => {
 });
 
 router.get("/release-orders/:id", requireAuth, async (req, res) => {
+  await syncAllReleaseOrders(db);
   const ro = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, Number(req.params.id)) });
   if (!ro) { res.status(404).json({ error: "Not found" }); return; }
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) });
@@ -106,7 +117,7 @@ router.get("/release-orders/:id", requireAuth, async (req, res) => {
 router.patch("/release-orders/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const updates: Record<string, unknown> = { ...req.body, updatedAt: new Date() };
-  if (updates.ratePerSpot !== undefined) updates.ratePerSpot = String(updates.ratePerSpot);
+  if (updates.ratePerDay !== undefined) updates.ratePerDay = String(updates.ratePerDay);
   const [ro] = await db.update(releaseOrdersTable).set(updates).where(eq(releaseOrdersTable.id, id)).returning();
   if (!ro) { res.status(404).json({ error: "Not found" }); return; }
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) });
@@ -125,8 +136,10 @@ router.post("/release-orders/:id/approve", requireAuth, requireRole("management"
     .set({ status: "approved", approvedAt: new Date(), approvedBy: req.user!.id, updatedAt: new Date() })
     .where(eq(releaseOrdersTable.id, id)).returning();
   if (!ro) { res.status(404).json({ error: "Not found" }); return; }
+  await syncAllReleaseOrders(db);
+  const syncedRo = await db.query.releaseOrdersTable.findFirst({ where: eq(releaseOrdersTable.id, id) });
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, ro.clientId) });
-  res.json(toRO(ro, client?.name || "Unknown"));
+  res.json(toRO(syncedRo || ro, client?.name || "Unknown"));
 });
 
 router.post("/release-orders/:id/reject", requireAuth, requireRole("management"), async (req, res) => {

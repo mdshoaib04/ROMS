@@ -27,7 +27,7 @@ export default function Invoices() {
     }
   };
 
-  const getAgingBadge = (aging: string | null) => {
+  const getAgingBadge = (aging?: string | null) => {
     if (!aging || aging === 'normal') return null;
     if (aging === 'warning') return <span className="inline-flex h-2 w-2 rounded-full bg-yellow-500 ml-2" title="Aging: 14+ days" />;
     return <span className="inline-flex h-2 w-2 rounded-full bg-destructive ml-2" title="Aging: 30+ days overdue" />;

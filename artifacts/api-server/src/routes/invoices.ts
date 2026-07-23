@@ -1,10 +1,20 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { invoicesTable, clientsTable, agenciesTable, releaseOrdersTable } from "@workspace/db";
+import { invoicesTable, clientsTable, agenciesTable, releaseOrdersTable, notificationsTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../lib/auth";
+import { generateInvoicePdf, sendInvoiceEmail } from "../lib/email";
 
 const router = Router();
+
+async function notifyManagement(db: any, message: string, type: string, relatedId: number) {
+  const managers = await db.query.usersTable.findMany({
+    where: eq(usersTable.role, "management"),
+  });
+  for (const mgr of managers) {
+    await db.insert(notificationsTable).values({ userId: mgr.id, message, type, relatedId, relatedType: "invoice" });
+  }
+}
 
 function getFinancialYear(): string {
   const now = new Date();
@@ -64,19 +74,19 @@ function toInvoice(inv: any, clientName: string, clientAddress: string, clientGs
 
 router.get("/invoices", requireAuth, async (req, res) => {
   const { status, clientId, month } = req.query;
-  let invs = await db.query.invoicesTable.findMany({ orderBy: (i, { desc }) => [desc(i.createdAt)] });
+  let invs = await db.query.invoicesTable.findMany({ orderBy: (i: any, { desc }: any) => [desc(i.createdAt)] });
 
-  if (status) invs = invs.filter(i => i.status === status);
-  if (clientId) invs = invs.filter(i => i.clientId === Number(clientId));
+  if (status) invs = invs.filter((i: any) => i.status === status);
+  if (clientId) invs = invs.filter((i: any) => i.clientId === Number(clientId));
   if (month && typeof month === "string") {
-    invs = invs.filter(i => i.publishFrom?.startsWith(month) || i.publishTo?.startsWith(month));
+    invs = invs.filter((i: any) => i.publishFrom?.startsWith(month) || i.publishTo?.startsWith(month));
   }
 
-  const clientIds = [...new Set(invs.map(i => i.clientId))];
+  const clientIds = [...new Set(invs.map((i: any) => i.clientId))];
   const clients = clientIds.length
     ? await db.query.clientsTable.findMany({ where: (c: any, { inArray }: any) => inArray(c.id, clientIds) })
     : [];
-  const agencyIds = [...new Set(invs.map(i => i.agencyId).filter(Boolean))] as number[];
+  const agencyIds = [...new Set(invs.map((i: any) => i.agencyId).filter(Boolean))] as number[];
   const agencies = agencyIds.length
     ? await db.query.agenciesTable.findMany({ where: (a: any, { inArray }: any) => inArray(a.id, agencyIds) })
     : [];
@@ -84,10 +94,10 @@ router.get("/invoices", requireAuth, async (req, res) => {
   const clientMap = Object.fromEntries(clients.map((c: any) => [c.id, c]));
   const agencyMap = Object.fromEntries(agencies.map((a: any) => [a.id, a.name]));
 
-  res.json(invs.map(i => toInvoice(i, clientMap[i.clientId]?.name || "", clientMap[i.clientId]?.address || "", clientMap[i.clientId]?.gstNumber || null, i.agencyId ? agencyMap[i.agencyId] : null)));
+  res.json(invs.map((i: any) => toInvoice(i, clientMap[i.clientId]?.name || "", clientMap[i.clientId]?.address || "", clientMap[i.clientId]?.gstNumber || null, i.agencyId ? agencyMap[i.agencyId] : null)));
 });
 
-router.post("/invoices", requireAuth, requireRole("operations"), async (req, res) => {
+router.post("/invoices", requireAuth, requireRole("operations", "management"), async (req, res) => {
   const invoiceNumber = await generateInvoiceNumber();
   const { subtotal, cgstAmount, sgstAmount, totalAmount } = calcTotals(req.body);
 
@@ -133,6 +143,14 @@ router.post("/invoices", requireAuth, requireRole("operations"), async (req, res
     createdBy: req.user!.id,
   }).returning();
 
+  // Notify management that a new invoice draft needs approval
+  await notifyManagement(
+    db,
+    `New Invoice Draft ${invoiceNumber} requires approval`,
+    "invoice_pending_approval",
+    inv.id
+  );
+
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, req.body.clientId) });
   const agency = req.body.agencyId ? await db.query.agenciesTable.findFirst({ where: eq(agenciesTable.id, req.body.agencyId) }) : null;
 
@@ -172,10 +190,22 @@ router.post("/invoices/:id/approve", requireAuth, requireRole("management"), asy
 
 router.post("/invoices/:id/send", requireAuth, requireRole("operations"), async (req, res) => {
   const id = Number(req.params.id);
-  const [inv] = await db.update(invoicesTable).set({ status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(invoicesTable.id, id)).returning();
+  const inv = await db.query.invoicesTable.findFirst({ where: eq(invoicesTable.id, id) });
   if (!inv) { res.status(404).json({ error: "Not found" }); return; }
   const client = await db.query.clientsTable.findFirst({ where: eq(clientsTable.id, inv.clientId) });
-  res.json(toInvoice(inv, client?.name || "", client?.address || "", client?.gstNumber || null));
+  if (!client) { res.status(404).json({ error: "Client not found" }); return; }
+
+  try {
+    const pdfBuffer = await generateInvoicePdf(inv, client);
+    await sendInvoiceEmail(inv, client, pdfBuffer);
+  } catch (err: any) {
+    console.error("Email send failure:", err);
+    res.status(500).json({ error: `Failed to deliver invoice email to ${client.email || 'client'}: ${err.message || 'SMTP connection error'}` });
+    return;
+  }
+
+  const [updatedInv] = await db.update(invoicesTable).set({ status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(invoicesTable.id, id)).returning();
+  res.json(toInvoice(updatedInv, client.name, client.address, client.gstNumber));
 });
 
 export default router;

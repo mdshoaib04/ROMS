@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { 
   useGetReleaseOrder, 
   useApproveReleaseOrder, 
   useRejectReleaseOrder,
   useStopReleaseOrder,
+  useReviseReleaseOrder,
   getGetReleaseOrderQueryKey
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
@@ -18,26 +19,62 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function ReleaseOrderDetail({ id }: { id: string }) {
+export default function ReleaseOrderDetail({ id: propId }: { id?: string }) {
   const { role } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const roId = parseInt(id);
+  const params = useParams<{ id: string }>();
+  const idStr = params?.id || propId;
+  const roId = idStr ? parseInt(idStr, 10) : 0;
 
   const { data: ro, isLoading } = useGetReleaseOrder(roId, {
-    query: { enabled: !!roId, queryKey: getGetReleaseOrderQueryKey(roId) }
+    query: { enabled: !!roId && !isNaN(roId), queryKey: getGetReleaseOrderQueryKey(roId) }
   });
 
   const approveMut = useApproveReleaseOrder();
   const rejectMut = useRejectReleaseOrder();
   const stopMut = useStopReleaseOrder();
+  const reviseMut = useReviseReleaseOrder();
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [stopOpen, setStopOpen] = useState(false);
+  const [reviseOpen, setReviseOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [revisionNote, setRevisionNote] = useState("");
+  const [newPublishFrom, setNewPublishFrom] = useState("");
+  const [newPublishTo, setNewPublishTo] = useState("");
+
+  const handleRevise = () => {
+    if (!revisionNote) {
+      toast({ title: "Error", description: "Revision note is required.", variant: "destructive" });
+      return;
+    }
+    reviseMut.mutate({
+      id: roId,
+      data: {
+        note: revisionNote,
+        publishFrom: newPublishFrom || undefined,
+        publishTo: newPublishTo || undefined,
+      }
+    } as any, {
+      onSuccess: () => {
+        toast({ title: "RO Revised", description: "The release order has been revised." });
+        setReviseOpen(false);
+        setRevisionNote("");
+        queryClient.invalidateQueries({ queryKey: getGetReleaseOrderQueryKey(roId) });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Revision Failed",
+          description: err.message || "Failed to revise release order.",
+          variant: "destructive",
+        });
+      }
+    });
+  };
 
   const handleApprove = () => {
-    approveMut.mutate({ params: { id: roId } }, {
+    approveMut.mutate({ id: roId } as any, {
       onSuccess: () => {
         toast({ title: "Approved", description: "Release order has been approved." });
         queryClient.invalidateQueries({ queryKey: getGetReleaseOrderQueryKey(roId) });
@@ -46,7 +83,7 @@ export default function ReleaseOrderDetail({ id }: { id: string }) {
   };
 
   const handleReject = () => {
-    rejectMut.mutate({ params: { id: roId }, data: { reason } }, {
+    rejectMut.mutate({ id: roId, data: { reason } } as any, {
       onSuccess: () => {
         toast({ title: "Rejected", description: "Release order has been rejected." });
         setRejectOpen(false);
@@ -57,7 +94,7 @@ export default function ReleaseOrderDetail({ id }: { id: string }) {
   };
 
   const handleStop = () => {
-    stopMut.mutate({ params: { id: roId }, data: { reason } }, {
+    stopMut.mutate({ id: roId, data: { reason } } as any, {
       onSuccess: () => {
         toast({ title: "Stopped", description: "Release order has been stopped." });
         setStopOpen(false);
@@ -118,7 +155,21 @@ export default function ReleaseOrderDetail({ id }: { id: string }) {
             </Button>
           )}
 
-          <Button variant="outline">
+          {ro.status === 'active' && (role === 'operations' || role === 'management') && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setNewPublishFrom(ro.publishFrom);
+                setNewPublishTo(ro.publishTo);
+                setRevisionNote("");
+                setReviseOpen(true);
+              }}
+            >
+              <FileText className="mr-2 h-4 w-4" /> Revise
+            </Button>
+          )}
+
+          <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-2 h-4 w-4" /> Print
           </Button>
         </div>
@@ -213,8 +264,8 @@ export default function ReleaseOrderDetail({ id }: { id: string }) {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm text-muted-foreground">Rate Per Spot</span>
-                  <span className="font-medium text-lg">₹ {ro.ratePerSpot?.toLocaleString() || "0"}</span>
+                  <span className="text-sm text-muted-foreground">Rate Per Day</span>
+                  <span className="font-medium text-lg">₹ {ro.ratePerDay?.toLocaleString() || "0"}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm pt-2">
                   <span className="text-muted-foreground text-xs">Total spots (est)</span>
@@ -291,6 +342,51 @@ export default function ReleaseOrderDetail({ id }: { id: string }) {
             <Button variant="outline" onClick={() => setStopOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleStop} disabled={!reason || stopMut.isPending}>
               Stop Media Playback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviseOpen} onOpenChange={setReviseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revise Release Order</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Publish From</label>
+                <input 
+                  type="date"
+                  value={newPublishFrom}
+                  onChange={(e) => setNewPublishFrom(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Publish To</label>
+                <input 
+                  type="date"
+                  value={newPublishTo}
+                  onChange={(e) => setNewPublishTo(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Revision Notes *</label>
+              <Textarea 
+                value={revisionNote} 
+                onChange={(e) => setRevisionNote(e.target.value)} 
+                placeholder="Reason for revision, client request details..."
+                className="h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviseOpen(false)}>Cancel</Button>
+            <Button onClick={handleRevise} disabled={!revisionNote || reviseMut.isPending} className="bg-primary hover:bg-primary/90">
+              Submit Revision
             </Button>
           </DialogFooter>
         </DialogContent>

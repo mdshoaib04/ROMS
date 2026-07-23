@@ -7,8 +7,8 @@ import { requireAuth, requireRole } from "../lib/auth";
 const router = Router();
 
 router.get("/agencies", requireAuth, async (req, res) => {
-  const agencies = await db.query.agenciesTable.findMany({ orderBy: (a, { asc }) => [asc(a.name)] });
-  res.json(agencies.map(a => ({ ...a, commissionPercent: Number(a.commissionPercent) })));
+  const agencies = await db.query.agenciesTable.findMany({ orderBy: (a: any, { asc }: any) => [asc(a.name)] });
+  res.json(agencies.map((a: any) => ({ ...a, commissionPercent: Number(a.commissionPercent) })));
 });
 
 router.post("/agencies", requireAuth, requireRole("management", "operations"), async (req, res) => {

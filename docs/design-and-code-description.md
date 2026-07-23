@@ -475,7 +475,7 @@ const roNumber = `RO/${year}/${seq}`;
 | Method | Path | Auth | Role | Notes |
 |---|---|---|---|---|
 | GET | /invoices | ✓ | any | Filter by `?status=`, `?clientId=`, `?month=` |
-| POST | /invoices | ✓ | operations | Auto-generates `IN/<FY>/<seq>`; calculates subtotal, GST amounts, total |
+| POST | /invoices | ✓ | operations, management | Auto-generates `IN/<FY>/<seq>`; calculates subtotal, GST amounts, total |
 | GET | /invoices/:id | ✓ | any | Response includes denormalized `clientName`, `clientAddress`, `clientGst`, `agencyName` |
 | PATCH | /invoices/:id | ✓ | operations | Recalculates totals on save |
 | POST | /invoices/:id/approve | ✓ | management | status → `approved` |

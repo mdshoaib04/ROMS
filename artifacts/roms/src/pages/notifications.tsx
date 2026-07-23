@@ -12,7 +12,7 @@ export default function Notifications() {
   const queryClient = useQueryClient();
 
   const handleMarkRead = (id: number) => {
-    readMut.mutate({ params: { id } }, {
+    readMut.mutate({ id } as any, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       }
@@ -24,18 +24,22 @@ export default function Notifications() {
       case 'ro_approved': return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
       case 'ro_rejected': return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case 'ro_expiring': return <Clock className="h-5 w-5 text-yellow-500" />;
+      case 'ro_pending_approval': return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'invoice_overdue': return <AlertTriangle className="h-5 w-5 text-destructive" />;
+      case 'invoice_pending_approval': return <Receipt className="h-5 w-5 text-yellow-500" />;
       case 'playout_report_ready': return <FileText className="h-5 w-5 text-blue-500" />;
       case 'invoice_delay': return <Receipt className="h-5 w-5 text-yellow-500" />;
       default: return <Bell className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
-  const getLink = (type: string, id?: number | null) => {
-    if (!id) return "#";
-    if (type.startsWith('ro_')) return `/release-orders/${id}`;
-    if (type.startsWith('invoice_')) return `/invoices/${id}`;
-    if (type.startsWith('playout_')) return `/playout-reports/${id}`;
+  const getLink = (notif: { type: string; relatedType?: string | null; relatedId?: number | null }) => {
+    if (!notif.relatedId) return "#";
+    const rel = notif.relatedType || "";
+    const type = notif.type || "";
+    if (rel === 'release_order' || type.startsWith('ro_')) return `/release-orders/${notif.relatedId}`;
+    if (rel === 'invoice' || type.startsWith('invoice_')) return `/invoices/${notif.relatedId}`;
+    if (rel === 'playout_report' || type.startsWith('playout_')) return `/playout-reports/${notif.relatedId}`;
     return "#";
   };
 
@@ -67,7 +71,7 @@ export default function Notifications() {
                 <div className="flex-1 space-y-1">
                   <p className={`text-sm ${!notif.isRead ? 'font-semibold' : 'text-muted-foreground'}`}>
                     {notif.relatedId ? (
-                      <Link href={getLink(notif.type, notif.relatedId)} className="hover:underline hover:text-primary">
+                      <Link href={getLink(notif)} className="hover:underline hover:text-primary">
                         {notif.message}
                       </Link>
                     ) : (

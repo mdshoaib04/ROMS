@@ -19,7 +19,7 @@ export interface ReleaseOrderUpdate {
   repeatTimes?: number;
   spotType?: string;
   spotDuration?: string;
-  ratePerSpot?: number;
+  ratePerDay?: number;
   bonusSpots?: number;
   mediaDesignRequired?: boolean;
   notes?: string;

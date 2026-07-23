@@ -34,6 +34,9 @@ export default function PlayoutReportNew() {
   const { toast } = useToast();
   const createMut = useCreatePlayoutReport();
   
+  const [editReference, setEditReference] = useState(false);
+  const [editMetrics, setEditMetrics] = useState(false);
+
   // Usually reports are made for active or recently stopped/completed ROs
   const { data: ros, isLoading: loadingRos } = useListReleaseOrders({ status: 'active' });
 
@@ -41,6 +44,12 @@ export default function PlayoutReportNew() {
     resolver: zodResolver(schema),
     defaultValues: {
       reportDate: format(new Date(), "yyyy-MM-dd"),
+      scrollKannadaDays: 0,
+      scrollMarathiDays: 0,
+      videoKannadaDays: 0,
+      videoMarathiDays: 0,
+      totalSpotsScheduled: 0,
+      totalSpotsAired: 0,
     },
   });
 
@@ -68,14 +77,48 @@ export default function PlayoutReportNew() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Reference Data</CardTitle>
+            <CardHeader className="flex flex-row justify-between items-center space-y-0 pb-4">
+              <CardTitle className="text-lg">Reference Data</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditReference(!editReference)}>
+                {editReference ? "Lock" : "Edit"}
+              </Button>
             </CardHeader>
             <CardContent className="grid sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="releaseOrderId" render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>Active Release Order *</FormLabel>
-                  <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value?.toString()}>
+                  <Select 
+                    onValueChange={(v) => {
+                      const roId = Number(v);
+                      field.onChange(roId);
+                      const selectedRo = ros?.find(r => r.id === roId);
+                      if (selectedRo) {
+                        if (selectedRo.publishFrom) form.setValue('publishFrom', selectedRo.publishFrom);
+                        if (selectedRo.publishTo) form.setValue('publishTo', selectedRo.publishTo);
+                        
+                        const from = new Date(selectedRo.publishFrom);
+                        const to = new Date(selectedRo.publishTo);
+                        const diffTime = Math.abs(to.getTime() - from.getTime());
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                        
+                        let channelsCount = 0;
+                        if (selectedRo.scrollKannada) channelsCount++;
+                        if (selectedRo.scrollMarathi) channelsCount++;
+                        if (selectedRo.audioVideoKannada) channelsCount++;
+                        if (selectedRo.audioVideoMarathi) channelsCount++;
+                        
+                        const scheduledSpots = diffDays * (selectedRo.repeatTimes || 0) * (channelsCount || 1);
+                        form.setValue('totalSpotsScheduled', scheduledSpots);
+                        form.setValue('totalSpotsAired', scheduledSpots);
+                        
+                        form.setValue('scrollKannadaDays', selectedRo.scrollKannada ? diffDays : 0);
+                        form.setValue('scrollMarathiDays', selectedRo.scrollMarathi ? diffDays : 0);
+                        form.setValue('videoKannadaDays', selectedRo.audioVideoKannada ? diffDays : 0);
+                        form.setValue('videoMarathiDays', selectedRo.audioVideoMarathi ? diffDays : 0);
+                      }
+                    }} 
+                    value={field.value?.toString()}
+                  >
                     <FormControl><SelectTrigger disabled={loadingRos}><SelectValue placeholder="Select RO" /></SelectTrigger></FormControl>
                     <SelectContent>
                       {ros?.map((ro) => <SelectItem key={ro.id} value={ro.id.toString()}>{ro.roNumber} - {ro.clientName}</SelectItem>)}
@@ -104,7 +147,7 @@ export default function PlayoutReportNew() {
               <FormField control={form.control} name="publishFrom" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Execution From</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormControl><Input type="date" disabled={!editReference} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -112,7 +155,7 @@ export default function PlayoutReportNew() {
               <FormField control={form.control} name="publishTo" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Execution To</FormLabel>
-                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormControl><Input type="date" disabled={!editReference} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -120,15 +163,18 @@ export default function PlayoutReportNew() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Execution Metrics</CardTitle>
+            <CardHeader className="flex flex-row justify-between items-center space-y-0 pb-4">
+              <CardTitle className="text-lg">Execution Metrics</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditMetrics(!editMetrics)}>
+                {editMetrics ? "Lock" : "Edit"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 border rounded-md">
                 <FormField control={form.control} name="totalSpotsScheduled" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Spots Scheduled (Expected)</FormLabel>
-                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormControl><Input type="number" disabled={!editMetrics} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -143,16 +189,16 @@ export default function PlayoutReportNew() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <FormField control={form.control} name="scrollKannadaDays" render={({ field }) => (
-                  <FormItem><FormLabel>Scroll KA (Days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Scroll KA (Days)</FormLabel><FormControl><Input type="number" disabled={!editMetrics} {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="scrollMarathiDays" render={({ field }) => (
-                  <FormItem><FormLabel>Scroll MR (Days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Scroll MR (Days)</FormLabel><FormControl><Input type="number" disabled={!editMetrics} {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="videoKannadaDays" render={({ field }) => (
-                  <FormItem><FormLabel>Video KA (Days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Video KA (Days)</FormLabel><FormControl><Input type="number" disabled={!editMetrics} {...field} /></FormControl></FormItem>
                 )} />
                 <FormField control={form.control} name="videoMarathiDays" render={({ field }) => (
-                  <FormItem><FormLabel>Video MR (Days)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel>Video MR (Days)</FormLabel><FormControl><Input type="number" disabled={!editMetrics} {...field} /></FormControl></FormItem>
                 )} />
               </div>
 

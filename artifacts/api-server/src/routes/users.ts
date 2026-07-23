@@ -7,8 +7,8 @@ import { requireAuth, requireRole, hashPassword } from "../lib/auth";
 const router = Router();
 
 router.get("/users", requireAuth, requireRole("management"), async (req, res) => {
-  const users = await db.query.usersTable.findMany({ orderBy: (u, { desc }) => [desc(u.createdAt)] });
-  res.json(users.map(({ passwordHash: _, ...u }) => u));
+  const users = await db.query.usersTable.findMany({ orderBy: (u: any, { desc }: any) => [desc(u.createdAt)] });
+  res.json(users.map(({ passwordHash: _, ...u }: any) => u));
 });
 
 router.post("/users", requireAuth, requireRole("management"), async (req, res) => {
