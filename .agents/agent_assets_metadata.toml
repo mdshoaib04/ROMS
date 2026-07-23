@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Ka7G_Duj9r8VEj8M6olf3"
+uri = "file://docs/design-and-code-description.md"
+type = "text"
+title = "InNews ROMS — Design & Code Description"

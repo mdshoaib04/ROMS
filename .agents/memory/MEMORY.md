@@ -1,0 +1,2 @@
+- [Auth password hashing](auth-hashing.md) — SESSION_SECRET salt causes operator-precedence bug; fix and reseed needed on fresh envs
+- [Seed credentials](seed-credentials.md) — Seed account passwords and how hashes are computed
